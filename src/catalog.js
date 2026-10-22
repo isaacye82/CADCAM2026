@@ -8,6 +8,7 @@ export const lessons=[
 {id:7,slug:'7.arc-length-parameterization',title:'参数化与弧长',group:'曲线与曲面',desc:'让两颗点沿相同曲线运动，观察参数速度与实际速度。',tags:['自然参数','数值积分','等速运动']},
 {id:8,slug:'8.curve-moving-frame',title:'曲线局部活动坐标系',group:'曲线与曲面',desc:'跟随 Frenet 标架，观察曲率圆、挠率与密切平面。',tags:['Frenet 标架','曲率','挠率']},
 {id:9,slug:'9.surface-moving-frame',title:'曲面局部活动坐标系',group:'曲线与曲面',desc:'沿等参数线探索切平面、法向与曲面的主曲率。',tags:['等参数线','切平面','主曲率']},
-{id:10,slug:'10.bezier',title:'Bezier 曲线综合实验',group:'曲线与曲面',desc:'自由组合曲线构造、递推、切矢与活动标架，探索曲率和挠率。',tags:['de Casteljau','活动标架','曲率与挠率']}
+{id:10,slug:'10.bezier',title:'Bezier 曲线综合实验',group:'曲线与曲面',desc:'自由组合曲线构造、递推、切矢与活动标架，探索曲率和挠率。',tags:['de Casteljau','活动标架','曲率与挠率']},
+{id:11,slug:'11.bezier-surface',title:'Bézier 曲面与张量积构造',group:'曲线与曲面',desc:'编辑二维控制网格，对照三种光照，观察一条 Bézier 曲线如何扫掠成面。',tags:['Bernstein 基','张量积','线动成面']}
 ];
 export const pages=[...lessons];

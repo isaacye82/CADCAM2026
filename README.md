@@ -1,6 +1,6 @@
 # CAD/CAM 课程交互实验室
 
-10 个课程作业、10 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
+11 个课程作业、11 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
 
 ```text
 src/ + scripts/build.mjs
@@ -52,7 +52,7 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 - `src/math.js`、`src/modules/`：数学算法与交互。
 - `src/prompts.json`：提示词源码档案，不发布。
 - `scripts/build.mjs`：唯一网页生成入口。
-- `scripts/validate-site.mjs`：13 个发布文件、链接、锚点与资源引用校验。
+- `scripts/validate-site.mjs`：14 个发布文件、链接、锚点与资源引用校验。
 - `scripts/package.mjs`：ZIP 打包与解压校验，由 release 调用。
 - `tests/`：数学、交付结构和发布校验测试。
 
@@ -84,3 +84,11 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 ## 动画默认播放
 
 具有动画控制的演示页在加载后自动播放，按钮初始显示“暂停”。可以暂停后调整参数、单步观察或重置；没有播放控制的静态交互页不额外增加运动。手机控制台收起时，动画也会正常播放。
+
+## 作业 11 Bézier 曲面
+
+入口为 `courses/11.bezier-surface.html`。四种次数 (2,2)、(3,3)、(4,4)、(2,3) 共用通用 Bernstein 求值；控制点支持三轴拖动与坐标输入。`src/bezier-surface.js` 实现张量积、两种求值次序、辅助点和解析法线；`src/surface-shaders.js` 对同一非索引三角网格分别在面中心、顶点、片元计算同一 Phong 反射模型。曲线和辅助图层复用缓冲区，扫掠通过参数空间裁剪连续显示，动画到终点自动暂停。单个生成 HTML 包含全部脚本、Shader、CSS 与 Three.js，可直接以 file:// 打开。
+
+构建仍仅更新 `CADCAM2026_Show/`，不更新 ZIP。现有 Pages 工作流在 main 更新后直接发布此目录；本功能需经 PR 审核后合并。Netlify 流程保持不变。
+
+作业 11 的完整验收与限制见 [Bézier 曲面验收记录](docs/validation/BEZIER_SURFACE.md)。本云环境已通过 WebGL2 与断网后交互测试，但浏览器管理策略禁止 `file://` 导航，直接双击离线打开仍需人工确认。
