@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command = "pnpm run build"
+  publish = "CADCAM2026_Show"
 
 [build.environment]
-  NODE_VERSION = "22"
+  NODE_VERSION = "24.19.0"
