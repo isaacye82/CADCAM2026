@@ -1,0 +1,211 @@
+{
+  "algorithm": "SHA256",
+  "original_files": [
+    {
+      "path": ".gitignore",
+      "bytes": 34,
+      "sha256": "e5060cffa554cbaf884d0a7e2a399d3771a05112292fd08ce10442758f582eb0"
+    },
+    {
+      "path": "AI交互演示作业（含提示词）.docx",
+      "bytes": 14960,
+      "sha256": "d295022a28760ce810791c33d68c888460dccf342643b1efb55906aa46a1133a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4898,
+      "sha256": "912008452b093201df8fb922286ac148e1a3b41bf1ef6b80f5d205cace7ba651"
+    },
+    {
+      "path": "THIRD_PARTY_LICENSES.txt",
+      "bytes": 2267,
+      "sha256": "b0b8a5f1f1672fca5681ec8a17751678bfe7dadea10259cfbb3c36df81e0e899"
+    },
+    {
+      "path": "VALIDATION.md",
+      "bytes": 3448,
+      "sha256": "9006fbb9c6c86c7edb7a74c1a750404085c77ba19621489695d70ffc524b6cc8"
+    },
+    {
+      "path": "netlify.toml",
+      "bytes": 98,
+      "sha256": "66d1f80fe07441d35fe7467f7e4e0005722da73926a307abf2bc232482b4eff9"
+    },
+    {
+      "path": "package.json",
+      "bytes": 308,
+      "sha256": "466a266849c579efdaad37cc553f1fd6d68678f3caaa359881b6e7cc2ae09791"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 8871,
+      "sha256": "01e9e220374669ead842e69cae5dfca88b8c89b1ad6ce4176e2b180ee2749a80"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "bytes": 29,
+      "sha256": "ac02d96368617c760f093cfe61fdec64b6244007ab3553e0d6621f706f54a353"
+    },
+    {
+      "path": "CADCAM2026_Show/index.html",
+      "bytes": 858501,
+      "sha256": "d315e6087110194eb4c54c3fe37b604f46a50af46ab67e1fb589b268d8ad3c69"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/1.convex-barycentric.html",
+      "bytes": 851081,
+      "sha256": "b7f06ae59a891c761fb0ddf23dc2e3d34d9a9ebd226bf2a35d8f8e106c0ea7e5"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/10.bezier - error.html",
+      "bytes": 847463,
+      "sha256": "6ee3c5c5d3865a963b9b7cb9158d724b09f4486bb73eee211f6a2c0f8b3ea0cb"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/10.bezier.html",
+      "bytes": 851225,
+      "sha256": "0ed4c733d00d154adfc4832ae85fb03dd9fb01ce07f607dbb4756d81f57aebd5"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/2.transformation-matrix.html",
+      "bytes": 851174,
+      "sha256": "e618a4a9c0ca89d66b2f01a291afdfebfbef357f35bae531f67470ea66e711d1"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/3.kd-tree.html",
+      "bytes": 851167,
+      "sha256": "be36a42a092e2fb56ea94b808b3620891f9fdde940da51106cbf3553486b5ba0"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/4.view-coordinate-system.html",
+      "bytes": 851188,
+      "sha256": "9acc49a001884cb3b301177c2d7ff2daec88b98e1d62bc427be3acecc17f3788"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/5.viewing-pipeline.html",
+      "bytes": 851202,
+      "sha256": "76751fa5545b52582d65b733eb3add06d702af4e7787ac20d382e61e302b6667"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/6.realistic-rendering.html",
+      "bytes": 851200,
+      "sha256": "f94d8325833b7506383980f3b1bc5633e2840542f2fed9272444eb7673d45131"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/7.arc-length-parameterization.html",
+      "bytes": 851221,
+      "sha256": "618c15d181e1f8359c2841ef4e68f1d79a9bedc25a76ee41b4ba37794b263dd4"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/8.curve-moving-frame.html",
+      "bytes": 851223,
+      "sha256": "9cfdd0c6c1e49eb2d9a55e53b465b7b06a2f1b95644a98bde9f8a3f6a33e4cbd"
+    },
+    {
+      "path": "CADCAM2026_Show/courses/9.surface-moving-frame.html",
+      "bytes": 851206,
+      "sha256": "1405e95f36610d9835e418ba11fbc00724c1faebda84b95f38b127f4abf2ad63"
+    },
+    {
+      "path": "scripts/build.mjs",
+      "bytes": 6386,
+      "sha256": "d6a566bfc4ea4edf9c8edae47b5c23c1826dc0109f37213368465c4651edf43f"
+    },
+    {
+      "path": "scripts/import-doc.py",
+      "bytes": 654,
+      "sha256": "99d188070875037fd469f849cfc2c88f4a2fa8e9ca85189998319b849d224dcb"
+    },
+    {
+      "path": "scripts/serve.mjs",
+      "bytes": 706,
+      "sha256": "cdae103068f0c4e8559f8fa664df7e778d5511f986cd9f2d566f861105be645c"
+    },
+    {
+      "path": "src/catalog.js",
+      "bytes": 2199,
+      "sha256": "591b2dda1ce566f7c1147bbb2fecc3f06366416174821ff68100ffaff206fb30"
+    },
+    {
+      "path": "src/main.js",
+      "bytes": 2731,
+      "sha256": "49d89a3b1ec13dc18fe3640ea25b12a947a4269a24727ff27828b9eaa6f7526b"
+    },
+    {
+      "path": "src/math.js",
+      "bytes": 9470,
+      "sha256": "5ee93730369ddd11dd8f3606b006ba32f85a50e33e4a1dd9bd15a423c04bc6a4"
+    },
+    {
+      "path": "src/prompts.json",
+      "bytes": 5292,
+      "sha256": "6b3ec25d8f0fb2b99f5ca1653e3664057d1b9b788154d8bba5ab4b785d4485de"
+    },
+    {
+      "path": "src/style.css",
+      "bytes": 15218,
+      "sha256": "06c9548ac0f7eddc713101619349c78bded153c7ef1abe0e56e1b6b8c785ea71"
+    },
+    {
+      "path": "src/thumbnails.js",
+      "bytes": 2135,
+      "sha256": "70b45b0da42c532cad8ec45eb46342146044c7a2ecdf2e41844bba1ae6bf0076"
+    },
+    {
+      "path": "src/ui.js",
+      "bytes": 8209,
+      "sha256": "b5d04a44a00c7a8baba018e0dc3a0fde0c69f02ecf0bfa6c901e27c1e3f1129a"
+    },
+    {
+      "path": "src/modules/barycentric.js",
+      "bytes": 4689,
+      "sha256": "5d09c66ea26fbcc7a16c11d7de6bf38c227c9587a18740f7465658c7af84ad2a"
+    },
+    {
+      "path": "src/modules/bezier.js",
+      "bytes": 16619,
+      "sha256": "8fd9792a21e95bcc2fd01d434b58b520c105a0f1ba2ed574b78cb7c40672bbd9"
+    },
+    {
+      "path": "src/modules/differential.js",
+      "bytes": 10143,
+      "sha256": "a2d0507b268824609399d8a427ff4d513173281bfe30bec412bee513f9b5db50"
+    },
+    {
+      "path": "src/modules/kd.js",
+      "bytes": 6173,
+      "sha256": "d6894843d72686fe6772d0c98ad316539f4451c34f6a62f6f5cfd84a6fa45c2f"
+    },
+    {
+      "path": "src/modules/lighting.js",
+      "bytes": 5097,
+      "sha256": "0c9d9e2ffd57f58e026ee2f044db2e58945f874cf338b6a976d51663a2d89039"
+    },
+    {
+      "path": "src/modules/matrix.js",
+      "bytes": 5613,
+      "sha256": "281ad8d62316dcf4c10c87f5cd72c317af155fda240039373613c38824841e33"
+    },
+    {
+      "path": "src/modules/observation.js",
+      "bytes": 11044,
+      "sha256": "3a89f61a88f908deda476eb891702e6d143c727928d7afecfa27f5e64b069795"
+    },
+    {
+      "path": "tests/bezier-frame.test.mjs",
+      "bytes": 3136,
+      "sha256": "d060023e8def808d5fe37cd5c28efaf0da29a431990ca6980a18ac08ebc461de"
+    },
+    {
+      "path": "tests/math.test.mjs",
+      "bytes": 4691,
+      "sha256": "8c3427ec4db7f8f617b8ac3c794e85c7bc4e0717b068811937de93c837e8a3e3"
+    },
+    {
+      "path": "tests/structure.test.mjs",
+      "bytes": 2153,
+      "sha256": "425960c416f8e43fd7f7381b90935674d7f7c54705a40965a0be26876bd3ca9f"
+    }
+  ],
+  "note": "41 original files are byte-preserved. Added migration notes and audit reports are separate from this original-source manifest."
+}

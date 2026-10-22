@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-22",
+  "platform_tested": "Windows x64",
+  "node": "24.19.0",
+  "pnpm": "11.25.0",
+  "install": {
+    "command": "pnpm install --frozen-lockfile --store-dir .pnpm-store --fetch-retries 0",
+    "result": "passed in isolated copy, registry downloads; no copied node_modules"
+  },
+  "build": {
+    "command": "pnpm run build",
+    "result": "passed in isolated copy"
+  },
+  "tests_before_build_original": {
+    "total": 24,
+    "pass": 21,
+    "fail": 3,
+    "reason": "Root generated index/courses missing after outputs were collected under CADCAM2026_Show"
+  },
+  "tests_after_build_isolated": {
+    "command": "pnpm test",
+    "total": 24,
+    "pass": 24,
+    "fail": 0
+  },
+  "rebuilt_byte_equal_to_current_snapshot": [
+    "courses/1.convex-barycentric.html",
+    "courses/10.bezier.html",
+    "courses/2.transformation-matrix.html",
+    "courses/3.kd-tree.html",
+    "courses/4.view-coordinate-system.html",
+    "courses/5.viewing-pipeline.html",
+    "courses/6.realistic-rendering.html",
+    "courses/7.arc-length-parameterization.html",
+    "courses/8.curve-moving-frame.html",
+    "courses/9.surface-moving-frame.html",
+    "index.html"
+  ],
+  "http_checks": [
+    {
+      "path": "404.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/1.convex-barycentric.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/10.bezier.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/2.transformation-matrix.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/3.kd-tree.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/4.view-coordinate-system.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/5.viewing-pipeline.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/6.realistic-rendering.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/7.arc-length-parameterization.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/8.curve-moving-frame.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "courses/9.surface-moving-frame.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "index.html",
+      "status": 200,
+      "bytes_equal": true
+    },
+    {
+      "path": "THIRD_PARTY_LICENSES.txt",
+      "status": 200,
+      "bytes_equal": true
+    }
+  ],
+  "http_method": "Isolated Python stdlib static server on ephemeral loopback port serving rebuilt dist; this checks HTTP files, not browser interactions or the fixed-port preview script.",
+  "original_included_files_sha256_unchanged": 41,
+  "not_verified_this_run": [
+    "Linux execution",
+    "Cloud port forwarding",
+    "Actual Netlify build/deploy",
+    "Browser interactions",
+    "Real mobile device",
+    "True offline file:// execution"
+  ],
+  "sandbox_note": "Initial online install and esbuild were blocked by sandbox EACCES; authorized independent-copy installation/build succeeded after escalation. Initial offline install lacked cached esbuild tarball."
+}

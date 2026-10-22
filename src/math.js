@@ -1,0 +1,46 @@
+export const add=(a,b)=>a.map((v,i)=>v+b[i]);
+export const sub=(a,b)=>a.map((v,i)=>v-b[i]);
+export const mul=(a,s)=>a.map(v=>v*s);
+export const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0);
+export const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+export const norm=a=>Math.hypot(...a);
+export const unit=a=>norm(a)>1e-10?mul(a,1/norm(a)):null;
+export function barycentric(p,a,b,c){const den=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]);if(Math.abs(den)<1e-7)return null;const x=((b[1]-c[1])*(p[0]-c[0])+(c[0]-b[0])*(p[1]-c[1]))/den,y=((c[1]-a[1])*(p[0]-c[0])+(a[0]-c[0])*(p[1]-c[1]))/den;return[x,y,1-x-y];}
+export const identity=()=>[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+export const transform=(m,p)=>[0,1,2,3].map(i=>m.slice(i*4,i*4+4).reduce((s,v,j)=>s+v*(p[j]??1),0));
+export function clipPolygon(poly){for(let axis=0;axis<3;axis++)for(const sign of [-1,1]){const out=[];for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],fa=a[3]+sign*a[axis],fb=b[3]+sign*b[axis],insideA=fa>=0,insideB=fb>=0;if(insideA)out.push(a);if(insideA!==insideB){const t=fa/(fa-fb);out.push(a.map((v,j)=>v+t*(b[j]-v)));}}poly=out;if(!poly.length)return[];}return poly;}
+export function rasterize(polygons,width=800,height=600){const pixels=new Uint8ClampedArray(width*height*4),depth=new Float64Array(width*height).fill(Infinity);for(let i=0;i<pixels.length;i+=4){pixels[i]=15;pixels[i+1]=29;pixels[i+2]=48;pixels[i+3]=255;}for(const poly of polygons)for(let i=1;i<poly.length-1;i++){const ndc=[poly[0],poly[i],poly[i+1]].filter(p=>Math.abs(p[3])>1e-8).map(p=>p.slice(0,3).map(x=>x/p[3]));if(ndc.length<3)continue;const face=unit(cross(sub(ndc[1],ndc[0]),sub(ndc[2],ndc[0])));if(!face)continue;const intensity=.35+.65*Math.abs(dot(face,[.3,.6,.74])),color=[55,220,195].map(x=>Math.round(x*intensity));const p=ndc.map(([x,y,z])=>[(x+1)*width/2,(1-y)*height/2,(z+1)/2]);const xmin=Math.max(0,Math.floor(Math.min(...p.map(p=>p[0])))),xmax=Math.min(width-1,Math.ceil(Math.max(...p.map(p=>p[0])))),ymin=Math.max(0,Math.floor(Math.min(...p.map(p=>p[1])))),ymax=Math.min(height-1,Math.ceil(Math.max(...p.map(p=>p[1]))));for(let y=ymin;y<=ymax;y++)for(let x=xmin;x<=xmax;x++){const weights=barycentric([x+.5,y+.5],...p);if(!weights||weights.some(w=>w<-1e-7))continue;const z=weights.reduce((s,w,j)=>s+w*p[j][2],0),index=y*width+x;if(z<depth[index]){depth[index]=z;pixels.set([...color,255],index*4);}}}return{pixels,depth};}
+export function project(m,p){const q=transform(m,p);return Math.abs(q[3])<1e-7?null:q.slice(0,3).map(v=>v/q[3]);}
+export function shadowMatrix(d){if(Math.abs(d[1])<1e-7)return null;return[1,-d[0]/d[1],0,0,0,0,0,0,0,-d[2]/d[1],1,0,0,0,0,1];}
+export function lookAt(eye,target,up){const z=unit(sub(eye,target));if(!z)return null;const x=unit(cross(up,z));if(!x)return null;const y=cross(z,x);return [...x,-dot(x,eye),...y,-dot(y,eye),...z,-dot(z,eye),0,0,0,1];}
+export function casteljau(points,t){const layers=[points.map(p=>[...p])];while(layers.at(-1).length>1){const p=layers.at(-1);layers.push(p.slice(1).map((b,i)=>add(mul(p[i],1-t),mul(b,t))));}return layers;}
+export const bezier=(p,t)=>casteljau(p,t).at(-1)[0];
+export function bernsteinWeights(n,t){if(t<=0)return Array.from({length:n+1},(_,i)=>+(i===0));if(t>=1)return Array.from({length:n+1},(_,i)=>+(i===n));let logC=0;const logs=Array.from({length:n+1},(_,i)=>{if(i)logC+=Math.log(n-i+1)-Math.log(i);return logC+i*Math.log(t)+(n-i)*Math.log1p(-t);});const max=Math.max(...logs),weights=logs.map(x=>Math.exp(x-max)),sum=weights.reduce((a,b)=>a+b,0);return weights.map(x=>x/sum);}
+export function bernsteinBezier(points,t){const weights=bernsteinWeights(points.length-1,t);return[0,1,2].map(j=>points.reduce((sum,p,i)=>sum+weights[i]*p[j],0));}
+export const bezierDerivative=(p,t)=>p.length<2?[0,0,0]:bezier(p.slice(1).map((q,i)=>mul(sub(q,p[i]),p.length-1)),t);
+export function bezierTangentRelation(points,t){const layers=casteljau(points,t),degree=points.length-1,[q0,q1]=layers.at(-2),chord=sub(q1,q0),derivative=mul(chord,degree);return{q0,q1,chord,derivative,point:layers.at(-1)[0],degree,chordLength:norm(chord),tangentLength:norm(derivative)};}
+// Differentiate the control polygon exactly; no finite differences at endpoints.
+export function bezierDerivativeOrder(points,t,order=1){let control=points;for(let k=0;k<order;k++){const degree=control.length-1;if(degree<1)return[0,0,0];control=control.slice(1).map((p,i)=>mul(sub(p,control[i]),degree));}return bernsteinBezier(control,t);}
+export function bezierFrame(points,t){const p=bernsteinBezier(points,t),d=bezierDerivativeOrder(points,t),dd=bezierDerivativeOrder(points,t,2),ddd=bezierDerivativeOrder(points,t,3),speed=norm(d),c=cross(d,dd),cn=norm(c),regular=speed>1e-10,bending=regular&&cn>1e-10*Math.max(1,speed*norm(dd)),T=regular?unit(d):null,B=bending?unit(c):null,N=B?cross(B,T):null;return{p,d,dd,ddd,speed,T,N,B,k:regular?(bending?cn/speed**3:0):null,tau:bending?dot(c,ddd)/(cn*cn):null};}
+export function seededPoints(n=30,seed=90210){const rand=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};return Array.from({length:n},(_,id)=>({id,p:[0,0,0].map(()=>rand()*6-3)}));}
+export function kdTree(points,depth=0,bounds=[[-3.5,-3.5,-3.5],[3.5,3.5,3.5]]){if(!points.length)return null;const axis=depth%3,p=[...points].sort((a,b)=>a.p[axis]-b.p[axis]||a.id-b.id),i=Math.floor(p.length/2),point=p[i];const left=bounds.map(a=>[...a]),right=bounds.map(a=>[...a]);left[1][axis]=point.p[axis];right[0][axis]=point.p[axis];return{...point,axis,depth,bounds,left:kdTree(p.slice(0,i),depth+1,left),right:kdTree(p.slice(i+1),depth+1,right)};}
+export function kdSearch(root,q){let best=null,dist=Infinity;const events=[];function visit(n){if(!n)return;const d=norm(sub(n.p,q));if(d<dist){best=n;dist=d;}events.push({type:'visit',id:n.id,best:best.id,dist,text:`访问 P${n.id}，距离 ${d.toFixed(3)}；当前最近 P${best.id}`});const delta=q[n.axis]-n.p[n.axis],near=delta<0?n.left:n.right,far=delta<0?n.right:n.left;visit(near);events.push({type:'backtrack',id:n.id,best:best.id,dist,text:`回溯 P${n.id}：分割面距离 ${Math.abs(delta).toFixed(3)}，搜索半径 ${dist.toFixed(3)}`});if(Math.abs(delta)<=dist)visit(far);else if(far)events.push({type:'prune',id:far.id,best:best.id,dist,text:`剪枝 P${far.id} 子树：分割面距离大于当前最近距离`});}visit(root);events.push({type:'done',id:best?.id,best:best?.id,dist,text:`完成：最近点 P${best?.id}，距离 ${dist.toFixed(4)}`});return{best,dist,events};}
+export const curves={
+ circle:{name:'圆',p:t=>[2*Math.cos(t),2*Math.sin(t),0],range:[0,Math.PI*2]},
+ helix:{name:'圆柱螺旋线',p:t=>[2*Math.cos(t),2*Math.sin(t),.5*t-Math.PI],range:[0,Math.PI*4]},
+ variable:{name:'变半径螺旋线',p:t=>[(1+.12*t)*Math.cos(t),(1+.12*t)*Math.sin(t),.35*t-2],range:[0,Math.PI*4]},
+ wave:{name:'空间波形曲线',p:t=>[t-3,1.2*Math.sin(2*t),Math.cos(3*t)],range:[0,6]},
+ ellipse:{name:'椭圆',p:t=>[3*Math.cos(t),1.1*Math.sin(t),0],range:[0,Math.PI*2]},
+ uneven:{name:'非均匀参数曲线',p:t=>[3*Math.cos(t*t/(Math.PI*2)),1.6*Math.sin(t*t/(Math.PI*2)),.4*Math.sin(t)],range:[0,Math.PI*2]}
+};
+export function frame(fn,t,h=.002){const p=fn(t),pm=fn(t-h),pp=fn(t+h),d=mul(sub(pp,pm),1/(2*h)),dd=mul(add(sub(pp,mul(p,2)),pm),1/(h*h)),ddd=mul(sub(sub(fn(t+2*h),mul(pp,2)),sub(fn(t-2*h),mul(pm,2))),1/(2*h*h*h));const speed=norm(d),c=cross(d,dd),cn=norm(c),T=unit(d),B=unit(c),N=B&&T?cross(B,T):null;return{p,T,N,B,speed,k:speed>1e-8?cn/speed**3:null,tau:cn>1e-8?dot(c,ddd)/cn**2:null};}
+export function arcTable(fn,a,b,n=2400){const table=[{t:a,s:0}];let s=0;for(let i=1;i<=n;i++){const t=a+(b-a)*i/n,prev=table.at(-1).t;const speed=x=>frame(fn,x).speed;s+=(t-prev)/6*(speed(prev)+4*speed((prev+t)/2)+speed(t));table.push({t,s});}return table;}
+export function arcParameter(table,s){s=Math.max(0,Math.min(s,table.at(-1).s));let lo=0,hi=table.length-1;while(hi-lo>1){const mid=(lo+hi)>>1;if(table[mid].s<s)lo=mid;else hi=mid;}const a=table[lo],b=table[hi];return a.t+(b.t-a.t)*(s-a.s)/(b.s-a.s||1);}
+export const surfaces={
+ plane:{name:'平面',p:(u,v)=>[u,v,0],u:[-2.5,2.5],v:[-2.5,2.5]},
+ sphere:{name:'球面 R=2',p:(u,v)=>[2*Math.sin(v)*Math.cos(u),2*Math.sin(v)*Math.sin(u),2*Math.cos(v)],u:[0,Math.PI*2],v:[0,Math.PI]},
+ cylinder:{name:'圆柱面 R=2',p:(u,v)=>[2*Math.cos(u),2*Math.sin(u),v],u:[0,Math.PI*2],v:[-2,2]},
+ torus:{name:'环面 R=2, r=0.7',p:(u,v)=>[(2+.7*Math.cos(v))*Math.cos(u),(2+.7*Math.cos(v))*Math.sin(u),.7*Math.sin(v)],u:[0,Math.PI*2],v:[0,Math.PI*2]},
+ saddle:{name:'鞍面',p:(u,v)=>[u,v,.35*(u*u-v*v)],u:[-2,2],v:[-2,2]}
+};
+export function surfaceFrame(fn,u,v,h=.001){const p=fn(u,v),du=mul(sub(fn(u+h,v),fn(u-h,v)),1/(2*h)),dv=mul(sub(fn(u,v+h),fn(u,v-h)),1/(2*h)),duu=mul(add(sub(fn(u+h,v),mul(p,2)),fn(u-h,v)),1/h**2),dvv=mul(add(sub(fn(u,v+h),mul(p,2)),fn(u,v-h)),1/h**2),duv=mul(add(sub(fn(u+h,v+h),fn(u+h,v-h)),sub(fn(u-h,v-h),fn(u-h,v+h))),1/(4*h*h)),n=unit(cross(du,dv));if(!n)return null;const E=dot(du,du),F=dot(du,dv),G=dot(dv,dv),e=dot(n,duu),f=dot(n,duv),g=dot(n,dvv),det=E*G-F*F;if(det<1e-9)return null;const K=(e*g-f*f)/det,H=(e*G-2*f*F+g*E)/(2*det),disc=Math.sqrt(Math.max(0,H*H-K)),ks=[H+disc,H-disc];const directions=ks.map(k=>{const a=e-k*E,b=f-k*F,c=g-k*G;let uv=Math.hypot(a,b)>Math.hypot(b,c)?[-b,a]:[-c,b];if(Math.hypot(...uv)<1e-7)uv=[1,0];return unit(add(mul(du,uv[0]),mul(dv,uv[1])));});return{p,du,dv,n,E,F,G,e,f,g,K,H,ks,directions,umbilic:disc<1e-5};}

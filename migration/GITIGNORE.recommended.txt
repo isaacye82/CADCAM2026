@@ -1,0 +1,41 @@
+# 建议内容；没有自动应用到原 .gitignore
+node_modules/
+.pnpm-store/
+dist/
+qa/
+.netlify/
+.vercel/
+.cache/
+.vite/
+.next/
+.turbo/
+.parcel-cache/
+coverage/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+.npmrc
+.pnpmrc
+.netrc
+auth.json
+credentials
+credentials.*
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+.aws/
+.ssh/
+# 确认模板只有占位值后，可以按实际名称添加 !.env.example 等例外。
+# .git 无需写入 ignore；迁移 ZIP 单独排除所有级别 .git。
