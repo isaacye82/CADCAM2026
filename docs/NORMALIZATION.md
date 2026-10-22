@@ -1,5 +1,7 @@
 # 静态网站目录规范化与验证
 
+> 本文保留上一轮目录规范化的验证记录；下方目录树已同步文档归档后的路径，原审计数据不变。当前工作流程以 [README.md](../README.md) 为准。
+
 2026-10-22，分支 `chore/unify-static-release`。基线为 `0fde0fc375219968ee71f4e284cc2403b4aa534f`。
 
 ## 目录和生成关系
@@ -14,7 +16,15 @@ CADCAM2026/
 │   ├── serve.mjs                # 预览唯一发布目录
 │   └── import-doc.py            # 原有文档导入工具
 ├── tests/                       # 原有 24 项 + 3 项发布/预览测试
-├── migration/                   # 历史资料及本轮验证 JSON
+├── docs/
+│   ├── NORMALIZATION.md          # 本记录
+│   ├── migration/                # 迁移说明和历史审计数据
+│   │   ├── README.md
+│   │   ├── MIGRATION.md
+│   │   └── *.json / *.txt
+│   └── validation/
+│       ├── CLOUD_VALIDATION.md
+│       └── VALIDATION.md
 ├── package.json
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
@@ -22,10 +32,6 @@ CADCAM2026/
 ├── .gitignore
 ├── .node-version
 ├── README.md
-├── MIGRATION.md
-├── NORMALIZATION.md
-├── CLOUD_VALIDATION.md           # 历史记录
-├── VALIDATION.md                 # 历史记录
 ├── THIRD_PARTY_LICENSES.txt
 ├── AI交互演示作业（含提示词）.docx
 ├── CADCAM2026_Show/
@@ -58,7 +64,7 @@ pnpm run preview
 pnpm run release
 ```
 
-云端缓存路径和下载说明见 README。ZIP 解压后得到一个顶层 `CADCAM2026_Show/`，将此文件夹拖入 Netlify 即可手动部署。本轮未部署。
+云端缓存路径和下载说明见 [README.md](../README.md)。ZIP 解压后得到一个顶层 `CADCAM2026_Show/`，将此文件夹拖入 Netlify 即可手动部署。本轮未部署。
 
 ## 已验证
 
@@ -72,7 +78,7 @@ pnpm run release
 - Headless Chromium 154，1365×900 桌面和 390×844 手机模拟：首页及全部课程可打开，10 个课程初始化标记为 true；课程 2–10 成功创建 WebGL 画布。手机页面宽度无溢出，控制台默认收起，画布区域宽度正常。
 - Bezier 页面代表性交互：暂停、单步、重置到既有初始值 0.35、四项展示全部关闭/开启、XYZ 开关在单步后保持。手机截图确认三维曲线和页面布局已渲染。
 
-详细路径、文件哈希、ZIP SHA256、桌面及手机观测值见 `migration/normalization-validation.json`。手机为浏览器模拟，未验证真机触摸、Safari/Firefox、所有课程的全部操作；不能将代表性检查解释为完整教学功能验收。
+详细路径、文件哈希、ZIP SHA256、桌面及手机观测值见 [migration/normalization-validation.json](migration/normalization-validation.json)。手机为浏览器模拟，未验证真机触摸、Safari/Firefox、所有课程的全部操作；不能将代表性检查解释为完整教学功能验收。
 
 ## 审查与部署边界
 

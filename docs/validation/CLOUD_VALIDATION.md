@@ -1,8 +1,8 @@
-> 历史记录：以下路径与快照策略描述迁移当时状态。当前唯一发布目录为 `CADCAM2026_Show/`，开发和发布流程见 [README.md](README.md)，本轮验证见 [NORMALIZATION.md](NORMALIZATION.md)。
+> 历史记录：以下路径与快照策略描述迁移当时状态。当前唯一发布目录为 `CADCAM2026_Show/`，开发和发布流程见 [README.md](../../README.md)，本轮验证见 [NORMALIZATION.md](../NORMALIZATION.md)。
 
 # 云端开发基线与验收记录
 
-日期：2026-10-22（北京时间）。本记录补充原 MIGRATION.md，原迁移审计材料不改写。
+日期：2026-10-22（北京时间）。本记录补充原 [MIGRATION.md](../migration/MIGRATION.md)，原迁移审计材料不改写。
 
 ## 环境与复现
 

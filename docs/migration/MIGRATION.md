@@ -1,4 +1,4 @@
-> 历史记录：以下路径与快照策略描述迁移当时状态。当前唯一发布目录为 `CADCAM2026_Show/`，开发和发布流程见 [README.md](README.md)，本轮验证见 [NORMALIZATION.md](NORMALIZATION.md)。
+> 历史记录：以下路径与快照策略描述迁移当时状态。当前唯一发布目录为 `CADCAM2026_Show/`，开发和发布流程见 [README.md](../../README.md)，本轮验证见 [NORMALIZATION.md](../NORMALIZATION.md)。
 
 # CAD/CAM 课程网站云端迁移说明
 
@@ -99,19 +99,19 @@ python3 -m http.server 4173 --bind 0.0.0.0 --directory dist
 
 ## 6. .gitignore 与打包排除规则
 
-原 .gitignore 只有 node_modules/、dist/、.netlify/、qa/，已原样保留。建议后续参考 `migration/GITIGNORE.recommended.txt`，补充：
+原 .gitignore 只有 node_modules/、dist/、.netlify/、qa/，已原样保留。建议后续参考 [GITIGNORE.recommended.txt](GITIGNORE.recommended.txt)，补充：
 
 - 各级 .pnpm-store、依赖与缓存目录、覆盖率目录、日志和临时文件。
 - .env 及变体、.npmrc/.pnpmrc/.netrc 中的认证、auth.json、credentials 文件、私钥与证书密钥、.aws/.ssh。需要模板时，仅保留确认都是占位值的模板；不要直接复制真实认证配置。
 - .git 本身由打包器排除，不需要写进 Git 的 ignore 文件。平台凭据应在平台秘密变量中重新配置，无需迁入本项目。
 
-本 ZIP 排除所有层级的 node_modules、.pnpm-store、.git、dist、qa、.netlify、.vercel 以及常见工具缓存/凭据目录；排除日志、临时文件和凭据相关文件，不追踪链接到项目外的文件。当前实际排除目录为 .pnpm-store、node_modules、dist、qa；未发现符号链接/目录联接或凭据文件。详细策略和实际列表见 migration/audit.json。
+本 ZIP 排除所有层级的 node_modules、.pnpm-store、.git、dist、qa、.netlify、.vercel 以及常见工具缓存/凭据目录；排除日志、临时文件和凭据相关文件，不追踪链接到项目外的文件。当前实际排除目录为 .pnpm-store、node_modules、dist、qa；未发现符号链接/目录联接或凭据文件。详细策略和实际列表见 [audit.json](audit.json)。
 
 CADCAM2026_Show 虽然是生成网页，但按用户要求作为当前成果快照保留。dist 可由源码重新生成，因此不放入 ZIP。原 Word 文档、提示词存档、源码、测试、配置、锁文件与第三方许可均保留。
 
 ## 7. 本次验证结果与仍需处理的事项
 
-独立副本验证：锁定依赖重新安装成功 → build 成功 → 24/24 测试通过；重新生成的首页和 10 个正式页面与 CADCAM2026_Show 对应页面逐字节一致。具体文件哈希、HTTP 检查及 ZIP 完整性见 migration/verification.json 和随包完整性记录。
+独立副本验证：锁定依赖重新安装成功 → build 成功 → 24/24 测试通过；重新生成的首页和 10 个正式页面与 CADCAM2026_Show 对应页面逐字节一致。具体文件哈希、HTTP 检查及 ZIP 完整性见 [verification.json](verification.json) 和随包完整性记录。
 
 待办：
 

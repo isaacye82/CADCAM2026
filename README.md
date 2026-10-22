@@ -55,7 +55,15 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 - `scripts/validate-site.mjs`：13 个发布文件、链接、锚点与资源引用校验。
 - `scripts/package.mjs`：ZIP 打包与解压校验，由 release 调用。
 - `tests/`：数学、交付结构和发布校验测试。
-- `migration/`、`MIGRATION.md`、`CLOUD_VALIDATION.md`：历史迁移资料；当前流程以本文和 `NORMALIZATION.md` 为准。
+
+## 文档导航
+
+- [目录规范化与验证](docs/NORMALIZATION.md)：源码、构建、发布关系及验证记录。
+- [迁移说明](docs/migration/MIGRATION.md)：原始迁移背景。
+- [迁移审计资料](docs/migration/README.md)：文件清单、哈希及历史验证 JSON。
+- [云端验证记录](docs/validation/CLOUD_VALIDATION.md)、[功能验证记录](docs/validation/VALIDATION.md)：历史验收记录。
+
+历史记录中的原始目录树、审计路径和哈希描述当时的快照，不代表当前文件位置；当前开发和发布命令以本 README 为准。
 
 旧根目录 `index.html`、`courses/` 和 `dist/` 不再使用；旧 error 对照页不属于 10 个正式课程，已从发布目录移除，可在 Git 历史查看。课程内容及交互源码未改动。Three.js 和 esbuild 的许可保留于根目录和发布目录的 `THIRD_PARTY_LICENSES.txt`。
 
