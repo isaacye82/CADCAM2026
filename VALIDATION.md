@@ -1,3 +1,5 @@
+> 历史记录：以下路径与快照策略描述迁移当时状态。当前唯一发布目录为 `CADCAM2026_Show/`，开发和发布流程见 [README.md](README.md)，本轮验证见 [NORMALIZATION.md](NORMALIZATION.md)。
+
 # 验证记录
 
 验证日期：2026-10-22。

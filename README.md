@@ -1,57 +1,63 @@
 # CAD/CAM 课程交互实验室
 
-10 个课程作业、10 个交互演示页面。首页为 `index.html`，各实验位于 `courses/`。生成的 HTML 内置脚本、样式、Three.js 与几何数据，单个演示页可脱离目录离线运行。返回目录和相邻作业导航需要保留文件夹结构。
+10 个课程作业、10 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
 
-## 使用
+```text
+src/ + scripts/build.mjs
+          ↓ pnpm run build
+CADCAM2026_Show/index.html + courses/*.html + 404.html + THIRD_PARTY_LICENSES.txt
+          ↓ pnpm run release（重新构建、测试、校验、打包）
+CADCAM2026_Show.zip
+```
 
-直接双击 `index.html`，或单独打开 `courses/` 内的 HTML。三维页面需要支持 WebGL2 的现代 Chrome、Edge 或 Firefox，并启用硬件加速。所有计算在浏览器中完成，无需账户或 API 密钥。
+## 云端开发
 
-各实验保留“如何探索”和“理解背后的数学”；原始提示词不在网页中展示。桌面端演示与控制台并排，数学说明紧接演示区下方；手机端控制台默认收起，可点击展开，页面顶部提供区域跳转入口。三维演示中，左键旋转、滚轮缩放、右键平移；Bezier 二维编辑模式直接拖动控制点，三维模式使用坐标轴。
-
-## 开发与重新生成
-
-需要 Node.js >=22.13.0、pnpm 11.25.0。已验证的开发环境为 Node 24.19.0，并记录在 `.node-version` 中。使用现有 `pnpm-lock.yaml` 安装锁定依赖：
+从包含 `package.json` 的仓库根目录操作；使用现有 checkout，无需新建 worktree。需要 Node.js >=22.13.0、pnpm 11.25.0，实测 Node 24.19.0（`.node-version`）。不依赖 Windows、本地绝对路径、数据库或 API 密钥。
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm test
+pnpm run check:site
 pnpm run preview
 ```
 
-预览地址为 `http://127.0.0.1:4173`。构建会重新生成根目录的 `index.html`、`courses/*.html`，并输出仅含网页的 `dist/` 部署副本。修改 `src/` 后请重新构建；不要直接修改生成的 HTML。
+预览从 `CADCAM2026_Show/` 提供文件，默认仅监听本机 4173 端口。支持 `HOST`、`PORT`，例如 `HOST=0.0.0.0 PORT=4187 pnpm run preview`；按云平台要求配置端口访问。预览进程需要每次重新启动，不等于公开部署。
 
-普通预览脚本支持 `HOST`、`PORT` 环境变量，例如在支持端口转发的平台执行 `HOST=0.0.0.0 PORT=4173 pnpm run preview`。省略变量时保持本地默认地址和端口。
+如果云端用户目录不可写，可以将缓存保存在工作区，保留依赖和 TLS 校验：
 
-ChatGPT Work 托管环境使用 `sites-preview start <项目绝对路径>`，由预览管理服务读取 `.openai/hosting.json` 中的 `dist` 静态目录；云端验收浏览器访问 `http://terminal.local:4173/`。不要同时另起服务器占用同一端口。该地址仅供内部浏览器验收，不是公网链接，也不代表已经部署。验收结束执行 `sites-preview stop`，下次按相同命令启动。
+```sh
+XDG_DATA_HOME=/workspace/cadcam-runtime/data XDG_CACHE_HOME=/workspace/cadcam-runtime/cache pnpm install --frozen-lockfile --store-dir /workspace/cadcam-runtime/store
+```
 
-`CADCAM2026_Show/` 是原始网页快照，不参与构建更新。后续修改源文件后重新构建到根目录网页及 `dist/`，不要覆盖该快照。
+修改 `src/` 后重新构建；不要直接修改生成网页。构建先完成脚本打包，再清空并重新生成 `CADCAM2026_Show/`，避免遗留过期页面。目录内不要放手写资源；新增资源应放在源码中并由构建脚本明确输出。普通构建、测试、预览均不会更新 ZIP。
+
+## 发布打包与下载
+
+```sh
+pnpm run release
+```
+
+该命令依次执行构建、全部测试、静态网站完整性及链接校验，然后使用锁定的纯 JavaScript ZIP 库生成仓库根目录的 `CADCAM2026_Show.zip`。ZIP 内容在写入前逐文件解压校验；文件顺序、时间戳固定，同一源码生成相同 ZIP。只有全部步骤通过才替换原 ZIP。
+
+ZIP 解压后只得到一个顶层目录 `CADCAM2026_Show/`，目录内直接包含首页和 `courses/`。可从云端文件面板下载，或在明确提交该发布包后从 GitHub 分支下载。发布 ZIP 是显式维护的交付物；需要更新时执行 release 并审查、提交 ZIP，不要让普通开发自动重打包。
+
+Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手动部署入口。仓库连接部署使用 `netlify.toml`：构建命令 `pnpm run build`，发布目录 `CADCAM2026_Show`。课程 URL 仍为 `/courses/<原文件名>.html`，不需要 SPA 重写。本次没有部署。
+
+## 离线使用与资源
+
+直接打开 `CADCAM2026_Show/index.html`，或单独打开 `courses/` 内的 HTML。正式网页的 CSS、JavaScript、Three.js 和几何数据均内联；单个课程页可脱离目录离线运行，目录与相邻课程导航需要保留文件夹结构。三维页面需要支持 WebGL2 的现代 Chrome、Edge 或 Firefox。
 
 - `src/catalog.js`：课程目录和路由。
-- `src/prompts.json`：从原始文档提取的提示词存档，仅保留在开发源码中，不参与网页构建。
-- `src/math.js`：独立数学与算法实现。
-- `src/modules/`：各实验的可视化与交互。
-- `src/style.css`：界面样式与响应式布局。
-- `scripts/build.mjs`：使用 esbuild 生成内联脚本页面。
-- `tests/`：数学正确性和交付结构测试。
+- `src/math.js`、`src/modules/`：数学算法与交互。
+- `src/prompts.json`：提示词源码档案，不发布。
+- `scripts/build.mjs`：唯一网页生成入口。
+- `scripts/validate-site.mjs`：13 个发布文件、链接、锚点与资源引用校验。
+- `scripts/package.mjs`：ZIP 打包与解压校验，由 release 调用。
+- `tests/`：数学、交付结构和发布校验测试。
+- `migration/`、`MIGRATION.md`、`CLOUD_VALIDATION.md`：历史迁移资料；当前流程以本文和 `NORMALIZATION.md` 为准。
 
-控制点添加没有固定数量上限，计算量随点数增长。数值导数使用中心差分，弧长使用 Simpson 积分表与二分反查；奇点与退化位置会显示说明。曲面主曲率符号取决于参数法向，球面默认参数化产生向内法向。
-
-## 将来部署到 Netlify
-
-方式一：构建后将 **`dist` 文件夹**拖入 Netlify 的手动部署入口。
-
-方式二：连接代码仓库，使用随项目提供的 `netlify.toml`：
-
-- Build command：`npm run build`
-- Publish directory：`dist`
-- Node.js：22
-
-不需要 SPA 重写规则，每个实验都有独立 HTML 地址，可直接访问。`dist` 不包含原始 Word 文档、开发源码或 `node_modules`。本项目未进行线上发布。
-
-## 第三方许可
-
-使用 Three.js（MIT）与其 OrbitControls、TransformControls、TeapotGeometry 附加组件。分发页面中的打包脚本保留许可证标记；完整许可见 `THIRD_PARTY_LICENSES.txt`。构建工具 esbuild 使用 MIT 许可。
+旧根目录 `index.html`、`courses/` 和 `dist/` 不再使用；旧 error 对照页不属于 10 个正式课程，已从发布目录移除，可在 Git 历史查看。课程内容及交互源码未改动。Three.js 和 esbuild 的许可保留于根目录和发布目录的 `THIRD_PARTY_LICENSES.txt`。
 
 ## 作业 10 综合实验
 

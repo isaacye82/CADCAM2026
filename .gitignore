@@ -1,0 +1,7 @@
+node_modules/
+.pnpm-store/
+dist/
+.netlify/
+qa/
+*.log
+CADCAM2026_Show.zip.tmp
