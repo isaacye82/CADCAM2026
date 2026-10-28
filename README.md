@@ -6,7 +6,7 @@
 src/ + scripts/build.mjs
           ↓ pnpm run build
 CADCAM2026_Show/index.html + courses/*.html + 404.html + THIRD_PARTY_LICENSES.txt
-          ↓ pnpm run release（重新构建、测试、校验、打包）
+          ↓ build 自动校验、打包（release 另执行完整测试）
 CADCAM2026_Show.zip
 ```
 
@@ -30,7 +30,7 @@ pnpm run preview
 XDG_DATA_HOME=/workspace/cadcam-runtime/data XDG_CACHE_HOME=/workspace/cadcam-runtime/cache pnpm install --frozen-lockfile --store-dir /workspace/cadcam-runtime/store
 ```
 
-修改 `src/` 后重新构建；不要直接修改生成网页。构建先完成脚本打包，再清空并重新生成 `CADCAM2026_Show/`，避免遗留过期页面。目录内不要放手写资源；新增资源应放在源码中并由构建脚本明确输出。普通构建、测试、预览均不会更新 ZIP。
+修改 `src/` 后重新构建；不要直接修改生成网页。构建先完成脚本打包，再清空并重新生成 `CADCAM2026_Show/`，避免遗留过期页面。目录内不要放手写资源；新增资源应放在源码中并由构建脚本明确输出。每次构建完成后自动校验发布目录并更新根目录 `CADCAM2026_Show.zip`。测试和预览本身不打包。后续每次网页修改都应执行构建，并将生成网页与 ZIP 一起提交，确保分支下载包同步。
 
 ## 发布打包与下载
 
@@ -38,9 +38,9 @@ XDG_DATA_HOME=/workspace/cadcam-runtime/data XDG_CACHE_HOME=/workspace/cadcam-ru
 pnpm run release
 ```
 
-该命令依次执行构建、全部测试、静态网站完整性及链接校验，然后使用锁定的纯 JavaScript ZIP 库生成仓库根目录的 `CADCAM2026_Show.zip`。ZIP 内容在写入前逐文件解压校验；文件顺序、时间戳固定，同一源码生成相同 ZIP。只有全部步骤通过才替换原 ZIP。
+该命令执行构建（自动校验并打包）、全部测试及静态网站完整性校验。普通 `pnpm run build` 也会使用锁定的纯 JavaScript ZIP 库生成仓库根目录的 `CADCAM2026_Show.zip`。ZIP 内容在写入前逐文件解压校验；文件顺序、时间戳固定，同一源码生成相同 ZIP。发布目录校验及 ZIP 解压比对通过后，以原子重命名替换旧 ZIP；完整测试失败时应修复后再提交交付。
 
-ZIP 解压后只得到一个顶层目录 `CADCAM2026_Show/`，目录内直接包含首页和 `courses/`。可从云端文件面板下载，或在明确提交该发布包后从 GitHub 分支下载。发布 ZIP 是显式维护的交付物；需要更新时执行 release 并审查、提交 ZIP，不要让普通开发自动重打包。
+ZIP 解压后只得到一个顶层目录 `CADCAM2026_Show/`，目录内直接包含首页和 `courses/`。可从云端文件面板下载，或在明确提交该发布包后从 GitHub 分支下载。发布 ZIP 随每次构建自动更新，应与生成网页一同提交。
 
 Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手动部署入口。仓库连接部署使用 `netlify.toml`：构建命令 `pnpm run build`，发布目录 `CADCAM2026_Show`。课程 URL 仍为 `/courses/<原文件名>.html`，不需要 SPA 重写。本次没有部署。
 
@@ -53,7 +53,7 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 - `src/prompts.json`：提示词源码档案，不发布。
 - `scripts/build.mjs`：唯一网页生成入口。
 - `scripts/validate-site.mjs`：15 个发布文件、链接、锚点与资源引用校验。
-- `scripts/package.mjs`：ZIP 打包与解压校验，由 release 调用。
+- `scripts/package.mjs`：ZIP 打包与解压校验，由 build 自动调用。
 - `tests/`：数学、交付结构和发布校验测试。
 
 ## 文档导航
@@ -89,7 +89,7 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 
 入口为 `courses/11.bezier-surface.html`。四种次数 (2,2)、(3,3)、(4,4)、(2,3) 共用通用 Bernstein 求值；控制点支持三轴拖动与坐标输入。`src/bezier-surface.js` 实现张量积、两种求值次序、辅助点和解析法线；`src/surface-shaders.js` 对同一非索引三角网格分别在面中心、顶点、片元计算同一 Phong 反射模型。曲线和辅助图层复用缓冲区，扫掠通过参数空间裁剪连续显示，动画到终点自动暂停。单个生成 HTML 包含全部脚本、Shader、CSS 与 Three.js，可直接以 file:// 打开。
 
-构建仍仅更新 `CADCAM2026_Show/`，不更新 ZIP。现有 Pages 工作流在 main 更新后直接发布此目录；本功能需经 PR 审核后合并。Netlify 流程保持不变。
+构建同步更新 `CADCAM2026_Show/` 与 `CADCAM2026_Show.zip`。现有 Pages 工作流在 main 更新后直接发布此目录；本功能需经 PR 审核后合并。Netlify 流程保持不变。
 
 作业 11 的完整验收与限制见 [Bézier 曲面验收记录](docs/validation/BEZIER_SURFACE.md)。本云环境已通过 WebGL2 与断网后交互测试，但浏览器管理策略禁止 `file://` 导航，直接双击离线打开仍需人工确认。
 
@@ -99,7 +99,7 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 
 `src/bspline.js` 提供独立数学算法；`src/modules/bspline.js` 和 `bspline-plots.js` 实现 Three.js 场景、节点轴及基函数图。主曲线支持最多 24 个控制顶点、平面拖动、空间三轴及坐标输入。节点编辑支持间距滑块、节点轴拖动和逐项数值，保留非递减约束，无效输入标红且不应用。B 样条曲线默认线宽 3px，可调；控制多边形及递推辅助线固定 1.5px，基函数线宽独立固定。控制顶点名称随控制多边形显示或隐藏，顶点及曲线点标记缩小；WebGL 使用本地 Three.js Line2，基函数图下方提供可点击的 Nᵢ,ₖ，数值不再重复列出。展示 1/2 使用均匀节点，展示 3/5 保留可编辑节点；心形三图可载入展示 3。控制台优先显示参数 u 和节点设置，手机提供不遮挡主要曲线窗口的非模态底部参数面板。de Boor 按课件用蓝／绿／红控制多边形与同色节点区间逐层构造，不再使用抽象三角图；区间行可点击，附四控制点的三次课件示例。权重验证默认折叠，主画面保留一次完整节点矢量和必要读数。
 
-验收与已知限制见 [作业 12 验收记录](docs/validation/BSPLINE.md)。可选浏览器验收：`python3 tests/browser/bspline.py`，需要 Python Playwright、`/usr/bin/chromium` 和本机 socket 权限；结果写入 `work/12-bspline/`。生产页面不增加新依赖。普通构建不更新发布 ZIP。
+验收与已知限制见 [作业 12 验收记录](docs/validation/BSPLINE.md)。可选浏览器验收：`python3 tests/browser/bspline.py`，需要 Python Playwright、`/usr/bin/chromium` 和本机 socket 权限；结果写入 `work/12-bspline/`。生产页面不增加新依赖。普通构建自动同步发布 ZIP。
 
 ## 作业 11 三项实验与首页目录
 
