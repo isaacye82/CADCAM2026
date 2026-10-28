@@ -179,3 +179,5 @@ body[data-page="12.bspline"] .bs-stage-vector{position:absolute;bottom:8px;left:
 .bs-heart-vectors{position:absolute;bottom:8px;left:0;right:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));pointer-events:none;z-index:3}.bs-heart-vectors[hidden]{display:none}.bs-heart-vectors p{margin:0 6px;padding:5px;background:#0b1421cc;font-size:11px;overflow-wrap:anywhere}@media(max-width:740px){.bs-heart-vectors{top:0;bottom:0;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr)}.bs-heart-vectors p{align-self:end;margin-bottom:8px}}
 
 .bs-toggle-row{display:flex;flex-wrap:wrap;gap:8px 14px}.bs-toggle-row .check{margin:0}
+
+body[data-page="12.bspline"] .control label.bs-control-heading{font-size:15px;font-weight:700;color:var(--text);margin:0 0 10px} .bs-dimension-panel{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}.bs-vertex-actions{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:5px;flex-wrap:nowrap}.bs-vertex-actions button{min-width:0;white-space:nowrap;padding:8px 4px;font-size:12px}

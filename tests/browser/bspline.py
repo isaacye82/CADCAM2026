@@ -59,19 +59,19 @@ with sync_playwright() as p:
  for name in ['显示控制顶点','显示控制多边形','显示 XYZ 坐标系']:control(name).check()
  for k in [1,2,3,4,5]:
   control('曲线次数 k').select_option(str(k));ok('degree '+str(k),segments()==str(7-k))
- control('曲线次数 k').select_option('3');page.get_by_role('button',name='增加控制顶点',exact=True).click();ok('append one segment',segments()=='5' and stage.get_attribute('data-count')=='8')
+ control('曲线次数 k').select_option('3');page.get_by_role('button',name='增加顶点',exact=True).click();ok('append one segment',segments()=='5' and stage.get_attribute('data-count')=='8')
  page.get_by_role('button',name='删除选中顶点',exact=True).click();ok('delete one segment',segments()=='4')
  slide('第 1 段局部 u',.2);slide('第 2 段局部 u',.7);ok('independent local sliders',abs(float(control('第 1 段局部 u').input_value())-.2)<1e-6 and abs(float(control('第 2 段局部 u').input_value())-.7)<1e-6)
  page.get_by_role('button',name='重置动画',exact=True).click();ok('reset local animation',all(float(control(f'第 {i} 段局部 u').input_value())==0 for i in range(1,5)))
  page.get_by_role('button',name='单步',exact=True).click();ok('single-step local marker',abs(float(control('第 1 段局部 u').input_value())-.025)<1e-6)
  # Direct planar control-vertex drag, projected using the known initial teaching camera.
- page.get_by_role('button',name='重置控制顶点',exact=True).click();control('选中控制顶点 𝐝ᵢ').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();box=canvas.bounding_box()
+ page.get_by_role('button',name='重置顶点',exact=True).click();control('选中控制顶点 𝐝ᵢ').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();box=canvas.bounding_box()
  point=[float(control('控制顶点坐标 '+axis).input_value()) for axis in 'XYZ'];scale=box['height']/(2*13*math.tan(math.radians(43)/2));x=box['x']+box['width']/2+point[0]*scale;y=box['y']+box['height']/2-point[1]*scale
  page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+25,y-20,steps=8);page.mouse.up();ok('planar pointer drag',abs(float(control('控制顶点坐标 X').input_value())-point[0])>.1)
  before=page.locator('#readout').inner_text();number('控制顶点坐标 Y',2.5);ok('coordinate input updates curve',before!=page.locator('#readout').inner_text())
  mode(2);slide('全局参数 u',2.25);ok('global domain and segment mapping','第 3 段局部 u=0.250' in page.locator('#readout').inner_text())
- mode(2);control('显示基函数次数').select_option('0');page.get_by_role('button',name='基函数 N_2,0',exact=True).click();ok('zero-degree basis and support',control('显示基函数次数').input_value()=='0' and page.get_by_role('button',name='基函数 N_2,0',exact=True).is_visible())
- control('显示基函数次数').select_option('3');slide('全局参数 u',.65);page.screenshot(path=str(out/'basis.png'),full_page=True)
+ mode(2);control('曲线次数 k').select_option('1');ok('basis degree follows curve degree',page.get_by_role('button',name='基函数 N_2,1',exact=True).is_visible() and control('显示基函数次数').count()==0)
+ control('曲线次数 k').select_option('3');slide('全局参数 u',.65);page.screenshot(path=str(out/'basis.png'),full_page=True)
  # Width affects the spatial curve only; basis pixels remain identical.
  basis=page.get_by_label('B样条基函数完整节点区间',exact=True)
  before=hashlib.sha256(basis.screenshot()).hexdigest();slide('曲线线宽（px）',7)
@@ -141,7 +141,7 @@ with sync_playwright() as p:
  ok('numeric verification collapsed',not page.locator('.bs-verification').evaluate('(e)=>e.open'));page.locator('.bs-verification summary').click();ok('optional weight verification',float(stage.get_attribute('data-weight-error'))<1e-10 and page.get_by_label('递推权重与基函数对应',exact=True).is_visible());page.locator('.bs-verification summary').click()
  page.screenshot(path=str(out/'book-reference-desktop.png'),full_page=True);page.locator('#stage').screenshot(path=str(out/'book-control-polygon.png'));ladder.screenshot(path=str(out/'book-knot-intervals.png'))
  # WebGL2 gizmo in spatial editing mode.
- control('2D/3D 曲线').select_option('space');ok('space editing available',control('2D/3D 曲线').input_value()=='space');page.get_by_role('button',name='载入 3D 波形曲线',exact=True).click();number('控制顶点坐标 Z',1.2);ok('spatial coordinate edit','1.200' in page.locator('#readout').inner_text())
+ control('2D/3D 曲线').select_option('space');ok('space editing available',control('2D/3D 曲线').input_value()=='space');number('控制顶点坐标 Z',1.2);ok('spatial coordinate edit','1.200' in page.locator('#readout').inner_text())
  control('选中控制顶点 𝐝ᵢ').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();page.wait_for_timeout(150);rect=canvas.bounding_box()
  point=[float(control('控制顶点坐标 '+axis).input_value()) for axis in 'XYZ'];eye=[7,5,10]
  def dot(a,b):return sum(x*y for x,y in zip(a,b))
@@ -161,6 +161,18 @@ with sync_playwright() as p:
  slide('全局参数 u',.6);ok('mobile panel edits parameter','u=0.600' in page.locator('#readout').inner_text());page.screenshot(path=str(out/'parameter-mobile.png'),full_page=True)
  drawer.get_by_role('button',name='收起',exact=True).click();ok('mobile panel closes',not drawer.evaluate('(e)=>e.open'))
  mode(4);page.wait_for_timeout(150);ok('mobile heart vertical layout',stage.evaluate('(e)=>e.clientHeight')==900);ok('mobile no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'));page.screenshot(path=str(out/'heart-mobile.png'),full_page=True)
+ for exhibit in range(1,6):
+  mode(exhibit);page.get_by_role('button',name='打开参数面板',exact=True).click();slide('曲线线宽（px）',7);control('显示控制顶点').uncheck()
+  page.get_by_role('button',name='恢复默认值',exact=True).click()
+  ok('reset current exhibit defaults '+str(exhibit),stage.get_attribute('data-bs-mode')==str(exhibit) and stage.get_attribute('data-curve-width')=='3' and stage.get_attribute('data-degree')=='3' and stage.get_attribute('data-playing')=='false' and control('显示控制顶点').is_checked() and control('2D/3D 曲线').input_value()=='plane' and float(control('动画速度').input_value())==1)
+  ok('reset is last console control '+str(exhibit),page.locator('#side').evaluate('(e)=>e.lastElementChild.textContent==="恢复默认值"'))
+  drawer.get_by_role('button',name='收起',exact=True).click()
+ mode(3);page.get_by_role('button',name='打开参数面板',exact=True).click()
+ buttons=page.locator('.bs-vertex-actions button');rects=[buttons.nth(i).bounding_box() for i in range(3)]
+ ok('mobile vertex buttons one row',max(r['y'] for r in rects)-min(r['y'] for r in rects)<2)
+ ok('removed redundant controls',page.get_by_role('button',name='载入 3D 波形曲线',exact=True).count()==0 and '基函数递推' not in page.locator('#side').inner_text())
+ ok('dimension section divider',control('2D/3D 曲线').evaluate('(e)=>parseFloat(getComputedStyle(e.closest(".bs-dimension-panel")).borderTopWidth)>0'))
+ ok('consistent heading typography',control('曲线次数 k').evaluate('(e)=>{const a=getComputedStyle(e.previousElementSibling),b=getComputedStyle(document.querySelector("#side h3"));return a.fontSize===b.fontSize&&a.fontWeight===b.fontWeight}'))
  ok('no JS or WebGL errors',not errors)
  results['errors']=errors;results['renderer']='Chromium WebGL2 / SwiftShader';browser.close()
 server.shutdown();(out/'acceptance.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
