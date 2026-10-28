@@ -5,8 +5,8 @@
   "new five exhibition titles": "PASS",
   "default double curve width": "PASS",
   "line width pixel counts": {
-    "1px": 1560,
-    "4px": 2464
+    "1px": 1563,
+    "4px": 2468
   },
   "WebGL line width changes actual pixels": "PASS",
   "degree 1": "PASS",
@@ -56,6 +56,25 @@
   "pause freezes parameter": "PASS",
   "visibility persists through animation": "PASS",
   "offline interaction after load": "PASS",
+  "clean exhibition 1": "PASS",
+  "clean exhibition 2": "PASS",
+  "basis buttons below graph 2": "PASS",
+  "clean exhibition 3": "PASS",
+  "basis buttons below graph 3": "PASS",
+  "clean exhibition 4": "PASS",
+  "clean exhibition 5": "PASS",
+  "basis buttons below graph 5": "PASS",
+  "reference preset cubic four controls": "PASS",
+  "reference ladder 3+2+1 intervals": "PASS",
+  "interval row selects matching polygon edge": "PASS",
+  "construction layer pixels": {
+    "blue": 360,
+    "green": 565,
+    "red": 566
+  },
+  "reference spatial layers blue green red": "PASS",
+  "numeric verification collapsed": "PASS",
+  "optional weight verification": "PASS",
   "space editing available": "PASS",
   "spatial coordinate edit": "PASS",
   "spatial Y gizmo drag": "PASS",

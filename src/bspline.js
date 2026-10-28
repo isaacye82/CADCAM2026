@@ -67,3 +67,6 @@ export function deBoorStep(result,U,k,index){
   }
   throw new RangeError('递推步骤超出范围');
 }
+
+// Four-control-point, uniform cubic example used by the course reference figure.
+export function deBoorTeachingExample(){return {d:[[-3,-1.6,0],[-2.2,1.8,0],[2.2,1.5,0],[3,-1.6,0]],U:uniformKnots(4,3),k:3,u:.5};}

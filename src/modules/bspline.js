@@ -3,9 +3,9 @@ import {LineGeometry} from 'three/addons/lines/LineGeometry.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
 import {THREE,makeView,el,block,button,select,range,check,vectorInput,animate,fmt,vec} from '../ui.js';
-import {uniformKnots,clampedKnots,splineError,domain,knotSpans,findSpan,basisValues,basisPoint,deBoor,splineDerivative,heartPoints,heartKnots,sampledSpans,deBoorStep} from '../bspline.js';
+import {uniformKnots,clampedKnots,splineError,domain,knotSpans,findSpan,basisValues,deBoor,splineDerivative,heartPoints,heartKnots,sampledSpans,deBoorStep,deBoorTeachingExample} from '../bspline.js';
 import {casteljau} from '../math.js';
-import {graphCanvas,drawBasis,drawKnotAxis,splineColor,drawRecursion,drawRatios,drawInfluences} from './bspline-plots.js';
+import {graphCanvas,drawBasis,drawKnotAxis,splineColor,drawNodeLadder,drawProjectedConstruction,constructionColor,drawInfluences} from './bspline-plots.js';
 
 const MAX=24,SAMPLES=64;
 const seed=()=>Array.from({length:7},(_,i)=>[-3+i,1.8*Math.sin(i*1.35),0]);
@@ -13,7 +13,7 @@ const names={1:'展示 1：分段与连续性',2:'展示 2：均匀 B 样条基�
 const heartNames=['均匀 · 不插值端点','端点 4 重 · 内部均匀','端点 4 重 · 内部 3 重'];
 
 export function bsplineDemo({stage,side,readout,info,instructions}){
-  const view=makeView(stage,{position:[0,0,13],grid:false});view.controls.enableRotate=false;
+  const view=makeView(stage,{position:[0,0,13],grid:false,axes:false});view.controls.enableRotate=false;
   let mode='1',k=3,d=seed(),U=uniformKnots(7,3),u=.6,selected=0,activeSegment=0,local=Array(4).fill(.5),is3D=false;
   let playing=true,speed=1,animationMode='scan',reveal=0,showPoints=true,showPolygon=true,showConstruction=true,level=3,basisSelected=-1;
   let curveWidth=2,activeStep=0,editableKnots=null;const wideLines=[];
@@ -39,10 +39,12 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const segmentDots=Array.from({length:MAX},(_,i)=>dot(main,materials[i%8],1.4));
   const construction=new THREE.Group();main.add(construction);
   const recursionLines=Array.from({length:6},(_,r)=>line(construction,6,splineColor(r)));
-  const recursionDots=Array.from({length:6},(_,r)=>Array.from({length:6-r},()=>dot(construction,materials[r],.75)));
+  const recursionMaterials=Array.from({length:6},()=>new THREE.MeshBasicMaterial({color:0xffffff,depthTest:false}));
+  recursionLines.forEach((line,r)=>{line.renderOrder=2+r;line.material.depthTest=false;});
+  const recursionDots=Array.from({length:6},(_,r)=>Array.from({length:6-r},()=>dot(construction,recursionMaterials[r],.95)));
   const castLines=Array.from({length:6},()=>line(construction,6,0xffffff));castLines.forEach(l=>l.material.transparent=true);castLines.forEach(l=>l.material.opacity=.5);
-  const cutGroup=new THREE.Group();construction.add(cutGroup);const cutAM=line(cutGroup,2,0x57dfcf),cutMB=line(cutGroup,2,0xf58ca9),cutMarker=dot(cutGroup,materials[2],1.6);
-  const cutLabel=el('div',{class:'bs-cut-label',hidden:''},stage);
+  const cutGroup=new THREE.Group();construction.add(cutGroup);const cutAM=line(cutGroup,2,0x568fff),cutMarker=dot(cutGroup,new THREE.MeshBasicMaterial({color:0x568fff}),1.4);
+  const edgeOverlay=graphCanvas(stage,'控制多边形与节点割比',540);edgeOverlay.classList.add('bs-edge-overlay');edgeOverlay.hidden=true;let constructionModel=null,ladderRows=[];
   const heartCamera=new THREE.OrthographicCamera(-4,4,4,-4,.05,100);heartCamera.position.set(0,0,15);
   const gizmo=new TransformControls(view.camera,view.renderer.domElement);gizmo.setSize(.7);view.scene.add(gizmo.getHelper());
   const overlay=el('div',{class:'overlay bs-status'},stage),heartLabels=el('div',{class:'bs-heart-labels',hidden:''},stage);
@@ -83,7 +85,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const segmentSelect=select(panels.global,'选中曲线段',{},0,value=>{activeSegment=+value;const s=spans()[activeSegment];u=(s.a+s.b)/2;if(mode==='1'){local[activeSegment]=.5;syncLocal();}pause();update();});
   panels.basis=block(side,'基函数递推');
   const levelSelect=select(panels.basis,'显示基函数次数',{},k,value=>{level=+value;basisSelected=-1;refreshBasisOptions();refreshBasisLegend();update();});
-  const basisSelect=select(panels.basis,'选中基函数',{},-1,value=>{basisSelected=+value;if(mode==='5'&&basisSelected>=0){selected=basisSelected;attach();}update();});
+  const basisSelect=select(panels.basis,'选中基函数',{},-1,value=>{basisSelected=+value;if(mode==='5'&&basisSelected>=0){selected=basisSelected;attach();}update();});basisSelect.parentElement.hidden=true;
   panels.nodes=block(side,'节点预设');
   const nodePreset=select(panels.nodes,'主曲线节点预设',{uniform:'均匀 · 间距 1',clamped:'端点 k+1 重 · 内部均匀',uneven:'非均匀简单节点',repeat:'内部 k 重节点',custom:'自定义 / 当前节点'},'uniform',value=>{
     if(value==='custom')return;
@@ -95,8 +97,14 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const nodeEditor=el('div',{},panels.nodes);
   panels.boor=block(side,'de Boor 比例构造');
   const stepSelect=select(panels.boor,'观察插值步骤',{},0,value=>{pause();activeStep=+value;if(animationMode==='steps')reveal=activeStep+1;update();});
-  select(panels.boor,'动画方式',{scan:'沿曲线移动参数',steps:'固定参数，逐点递推'},animationMode,value=>{animationMode=value;reveal=0;update();});
+  const animationSelect=select(panels.boor,'动画方式',{scan:'沿曲线移动参数',steps:'固定参数，逐点递推'},animationMode,value=>{animationMode=value;reveal=0;update();});
+  const compareToggle=check(panels.boor,'对照 de Casteljau',false,()=>update());
   const constructionToggle=check(panels.boor,'显示递推点与连线',true,value=>{showConstruction=value;update();});
+  const bookPreset=button(panels.boor,'课件三次示例',()=>{
+    ({d,U,k,u}=deBoorTeachingExample());level=k;selected=0;basisSelected=-1;reveal=0;activeStep=0;animationMode='steps';animationSelect.value='steps';
+    const axisToggle=side.querySelector('input[aria-label="显示 XYZ 坐标系"]');axisToggle.checked=false;axisToggle.dispatchEvent(new Event('change'));
+    is3D=false;dimension.value='plane';view.controls.enableRotate=false;view.camera.position.set(0,0,7.5);view.controls.target.set(0,0,0);rebuild();playing=true;play.textContent='暂停';feedback('按课件顺序：蓝色第一层 → 绿色第二层 → 红色曲线点。');
+  },'primary');panels.boor.prepend(bookPreset);
   button(panels.boor,'单段 Bézier 特例',()=>{
     pause();d=d.slice(0,k+1).map(p=>p.slice());U=clampedKnots(d.length,k);u=.4;reveal=0;selected=0;feedback('已设为 k+1 个控制顶点、无内部节点；de Boor 与 de Casteljau 对照。');rebuild();
   });
@@ -109,13 +117,22 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   button(side,'重置观察视角',()=>{view.camera.position.set(...(is3D?[7,5,10]:[0,0,13]));view.controls.target.set(0,0,0);});
 
   const axisWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'节点轴与曲线参数区间'},axisWrap);const knotCanvas=graphCanvas(axisWrap,'主曲线完整节点轴',125);const knotLabels=el('div',{class:'bs-node-vector'},axisWrap);const knotVector=el('p',{class:'bs-values'},axisWrap);
-  const basisWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'Cox–de Boor 基函数'},basisWrap);const basisLegend=el('div',{class:'bs-basis-legend'},basisWrap);el('p',{text:'Nᵢ,ₖ：i 为基函数编号，k 为次数。点击编号可联动高亮支撑区间及递推权重路径。'},basisWrap);const basisCanvas=graphCanvas(basisWrap,'B样条基函数完整节点区间');const basisReadout=el('p',{class:'bs-values'},basisWrap);
+  const basisWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'Cox–de Boor 基函数'},basisWrap);
+  const basisCanvas=graphCanvas(basisWrap,'B样条基函数完整节点区间'),basisLegend=el('div',{class:'bs-basis-legend'},basisWrap);
+  const basisReadout=el('p',{class:'bs-values bs-basis-summary'},basisWrap);
   const continuityWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'分段连接处的解析左右导数'},continuityWrap);const continuity=el('div',{class:'bs-continuity'},continuityWrap);
-  const boorWrap=el('section',{class:'bs-extra'},extras);const boorTitle=el('h3',{text:'de Boor 递推三角图'},boorWrap);const boorGrid=el('div',{class:'bs-triangles'},boorWrap),boorTable=el('div',{},boorGrid),castTable=el('div',{},boorGrid);const boorFeedback=el('p',{class:'bs-values'},boorWrap);
-  const recursionCanvas=graphCanvas(boorTable,'de Boor 比例递推三角图',390),castCanvas=graphCanvas(castTable,'de Casteljau 比例递推三角图',390);
-  const ratioCanvas=graphCanvas(boorWrap,'节点比例与空间割边对应',182),influenceCanvas=graphCanvas(boorWrap,'递推权重与基函数对应',145);
-  el('p',{text:'青色段 AM 占 α，粉色段 MB 占 1−α。注意：A 的权重取对边 MB/AB=1−α，B 的权重取对边 AM/AB=α。图中的纵向只表示递推层；黄色点先在父边上按 α 割分，再传给下一层。选中一个 Nᵢ,ₖ：顶层该控制顶点权重为 1，其余为 0；沿边乘系数、汇合相加，底层得到的权重就是 Nᵢ,ₖ(u)。'},boorWrap);
+  const boorWrap=el('section',{class:'bs-extra bs-book-figure'},extras);el('h3',{text:'de Boor：节点区间 → 控制边 → 新控制多边形'},boorWrap);
+  const phases=el('ol',{class:'bs-construction-phases'},boorWrap);['定位 u 与相对比例','映射到对应控制边','连接新点，进入下一层'].forEach(text=>el('li',{text},phases));
+  const ladderScroll=el('div',{class:'bs-ladder-scroll'},boorWrap),ladderCanvas=graphCanvas(ladderScroll,'de Boor 逐层节点区间',301);
+  const boorFeedback=el('p',{class:'bs-values'},boorWrap),bookVector=el('p',{class:'bs-values'},boorWrap);
+  const verification=el('details',{class:'bs-verification'},basisWrap);el('summary',{text:'查看权重对应与数值验证'},verification);
+  const influenceCanvas=graphCanvas(verification,'递推权重与基函数对应',145),verificationText=el('p',{class:'bs-values'},verification);
+  el('p',{text:'点击上方某个基函数，可高亮相应控制顶点。按钮数值就是该顶点对最终曲线点的权重。'},verification);
   extras.insertBefore(boorWrap,basisWrap);
+  ladderCanvas.addEventListener('pointerdown',event=>{
+    const rect=ladderCanvas.getBoundingClientRect(),y=event.clientY-rect.top,row=ladderRows.find(row=>y>=row.y0&&y<=row.y1);
+    if(row){pause();activeStep=row.index;if(animationMode==='steps')reveal=activeStep+1;update();}
+  });
   const heartWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'展示 3 的心形特例：三组可编辑节点，共享控制顶点'},heartWrap);el('p',{text:'节点可在轴上拖动或逐项输入。重复节点会叠在同一位置，可用下方编号选择；编辑保持节点非递减。共享端点 𝐝₀=𝐝₆ 仅是预设，修改后不会强制重合。'},heartWrap);
   const heartColumns=el('div',{class:'bs-heart-columns'},heartWrap),heartPanels=[];
   heartNames.forEach((name,i)=>{
@@ -126,7 +143,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   });
   const heartSide=block(side,'心形三图控制');button(heartSide,'恢复心形对照预设',()=>{pause();heartD=heartPoints();heartU=heartKnots();heartProgress=.4;selected=0;rebuild();});
   const heartSlider=range(heartSide,'心形动画相对进度',0,1,heartProgress,.001,value=>{pause();heartProgress=value;update();});
-  el('p',{text:'心形三图固定为三次、7 个控制顶点。左图一般不闭合；中图端点插值；右图预设是两段 Bézier，内部一般仅 C⁰ 连续。修改节点后以实际段数和重数为准。'},heartSide);
+  el('p',{text:'三图共享顶点；节点分别编辑。左图不保证闭合，编辑后以实际曲线为准。'},heartSide);
 
   function points(){return mode==='4'?heartD:d;}
   function spans(){return knotSpans(U,k);}
@@ -143,8 +160,9 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     localControls.replaceChildren();localInputs=ss.map((s,i)=>range(localControls,`第 ${i+1} 段局部 u`,0,1,local[i],.001,value=>{pause();activeSegment=i;local[i]=value;u=s.a+value*(s.b-s.a);update();}));
     level=Math.min(level,k);levelSelect.replaceChildren();for(let q=0;q<=k;q++)el('option',{value:q,text:`${q} 次基函数`},levelSelect);if(mode==='5')level=k;levelSelect.value=level;levelSelect.disabled=mode==='5';basisSelected=mode==='5'?(basisSelected>=0&&basisSelected<d.length?basisSelected:basisValues(U,k,u).indexOf(Math.max(...basisValues(U,k,u)))):-1;refreshBasisOptions();if(mode==='5')selected=basisSelected;
     if(editors&&mode==='4')heartPanels.forEach((panel,i)=>makeEditor(panel.editor,()=>heartU[i],3,7,value=>{heartU[i]=value;heartIndex=i;drawStatic();update();},panel.axis));
-    else if(editors)makeEditor(nodeEditor,()=>U,k,d.length,value=>{U=value;const [a,b]=domain(U,k);const old=u;u=Math.max(a,Math.min(b,u));feedback(old!==u?'参数已限制到新的有效域。':'节点已更新，曲线与基函数同步变化。');rebuild(false);},knotCanvas);
-    stepSelect.replaceChildren();let stepIndex=0;for(let r=1;r<=k;r++)for(let q=0;q<=k-r;q++)el('option',{value:stepIndex++,text:`第 ${r} 层 · 第 ${q+1} 个割边`},stepSelect);activeStep=Math.min(activeStep,stepIndex-1);
+    else if(editors)makeEditor(nodeEditor,()=>U,k,d.length,value=>{U=value;const [a,b]=domain(U,k);const old=u;u=Math.max(a,Math.min(b,u));feedback(old!==u?'参数已限制到新的有效域。':'');rebuild(false);},knotCanvas);
+    stepSelect.replaceChildren();let stepIndex=0;for(let r=1;r<=k;r++)for(let q=0;q<=k-r;q++)el('option',{value:stepIndex++,text:`l=${r} · 第 ${q+1} 个新点`},stepSelect);activeStep=Math.min(activeStep,stepIndex-1);
+    ladderCanvas.style.height=(100+k*(k+1)/2*29+k*9)+'px';ladderCanvas.style.minWidth=Math.max(280,new Set(U).size*30+70)+'px';
     refreshBasisLegend();refreshNodeLabels(knotLabels,knotVector,U,k);heartPanels.forEach((panel,i)=>refreshNodeLabels(panel.labels,panel.vector,heartU[i],3));
     attach();drawStatic();update();
   }
@@ -154,9 +172,8 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     const p=points()[selected];pointSelect.value=selected;coordinates.forEach((input,j)=>input.value=fmt(p[j],4));gizmo.detach();
     if(is3D&&mode!=='4'&&showPoints)gizmo.attach(drawingMain.handles[selected]);
   }
-  function refreshNodeLabels(parent,vector,knots,p){
-    parent.replaceChildren();knots.forEach((x,i)=>el('span',{html:`<b>u<sub>${i}</sub></b> = ${+x.toFixed(3)}`},parent));
-    vector.textContent=`u₀ … uₙ₊ₖ₊₁（n=${knots.length-p-2}，k=${p}）\nU = [${knots.map(x=>+x.toFixed(3)).join(', ')}]`;
+  function refreshNodeLabels(parent,vector,knots){
+    parent.replaceChildren();parent.hidden=true;vector.textContent=`U = [${knots.map(x=>+x.toFixed(3)).join(', ')}]`;
   }
   function refreshBasisLegend(){
     basisLegend.replaceChildren();for(let i=0;i<U.length-level-1;i++){
@@ -167,7 +184,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   function makeEditor(parent,getKnots,p,count,onValid,canvas){
     parent.replaceChildren();let nodeIndex=Math.min(p+1,getKnots().length-1),dragging=false;
     const suffix=mode==='4'?` ${heartNames[heartPanels.findIndex(x=>x.axis===canvas)]}`:'';
-    const nodeChoice=select(parent,'拖动节点编号'+suffix,Object.fromEntries(getKnots().map((x,i)=>[i,`u${i} = ${x}`])),nodeIndex, value=>{nodeIndex=+value;display();});
+    const nodeChoice=select(parent,'拖动节点编号'+suffix,Object.fromEntries(getKnots().map((x,i)=>[i,`u${i}`])),nodeIndex, value=>{nodeIndex=+value;display();});
     const currentLabel=el('label',{class:'bs-node-current',text:'当前节点值'},parent),current=el('input',{type:'number',step:'.05','aria-label':`当前节点值 ${canvas.getAttribute('aria-label')}`},currentLabel);
     current.addEventListener('input',()=>apply(nodeIndex,current.valueAsNumber,current));
     const gap=range(parent,'节点间距 Δu'+suffix,0,2,1,.01,value=>{if(nodeIndex>0)apply(nodeIndex,getKnots()[nodeIndex-1]+value);});
@@ -177,11 +194,11 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
       input.addEventListener('input',()=>{nodeIndex=i;nodeChoice.value=i;apply(i,input.valueAsNumber,input);});return input;
     });
     const values=el('p',{class:'bs-values'},parent);
-    function display(){const knots=getKnots();nodeChoice.value=nodeIndex;nodeChoice.querySelectorAll('option').forEach((o,i)=>o.textContent=`u${i} = ${knots[i]}`);
+    function display(){const knots=getKnots();nodeChoice.value=nodeIndex;nodeChoice.querySelectorAll('option').forEach((o,i)=>o.textContent=`u${i}`);
       if(document.activeElement!==current)current.value=knots[nodeIndex];
       inputs.forEach((input,i)=>{if(document.activeElement!==input)input.value=knots[i];});
       const delta=nodeIndex>0?knots[nodeIndex]-knots[nodeIndex-1]:0;gap.disabled=nodeIndex===0;gap.max=nodeIndex>0?Math.max(.01,(knots[nodeIndex+1]??(knots[nodeIndex]+(knots.at(-1)-knots[0])))-knots[nodeIndex-1]):1;sync(gap,delta);
-      values.textContent=`Δ = [${knots.slice(1).map((x,i)=>+(x-knots[i]).toFixed(3)).join(', ')}]`;
+      values.hidden=true;
     }
     function apply(index,value,input){
       const proposed=getKnots().slice();proposed[index]=value;const error=splineError(Array.from({length:count},()=>[0,0,0]),proposed,p);
@@ -233,7 +250,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   function switchMode(value,imported=false){
     const old=mode;if(['3','5'].includes(old)&&!imported)editableKnots={knots:U.slice(),count:d.length,degree:k};
     pause();mode=value;modeSelect.value=value;stage.dataset.bsMode=value;heartLabels.hidden=value!=='4';main.visible=value!=='4';hearts.forEach(g=>g.visible=value==='4');
-    for(const [element,visible]of [[panels.local,value==='1'],[panels.global,value!=='4'],[panels.basis,['2','3','5'].includes(value)],[panels.nodes,['3','5'].includes(value)],[panels.boor,value==='5'],[heartSide,value==='4'],[axisWrap,value!=='4'],[basisWrap,['2','3','5'].includes(value)],[continuityWrap,value==='1'],[boorWrap,value==='5'],[heartWrap,value==='4']])element.hidden=!visible;
+    for(const [element,visible]of [[panels.local,value==='1'],[panels.global,value!=='4'],[panels.basis,['2','3','5'].includes(value)],[panels.nodes,['3','5'].includes(value)],[panels.boor,value==='5'],[heartSide,value==='4'],[axisWrap,value!=='4'&&value!=='5'],[basisWrap,['2','3','5'].includes(value)],[continuityWrap,value==='1'],[boorWrap,value==='5'],[verification,value==='5'],[heartWrap,value==='4']])element.hidden=!visible;
     if(['1','2'].includes(value)&&!isUniform()){
       U=uniformKnots(d.length,k);feedback('展示 1/2 使用间距 1 的均匀节点；展示 3/5 的节点编辑已保留。');
     }else if(['3','5'].includes(value)&&!['3','5'].includes(old)&&!imported){
@@ -242,60 +259,62 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     if(imported)editableKnots={knots:U.slice(),count:d.length,degree:k};
     if(value==='5')level=k;
     view.controls.enabled=value!=='4';dimension.value=value==='4'?'plane':is3D?'space':'plane';
-    modeTabs.forEach((tab,i)=>tab.classList.toggle('active',String(i+1)===value));rebuild();if(drawer.open)document.querySelector('#lab-demo').scrollIntoView({block:'start'});
+    modeTabs.forEach((tab,i)=>tab.classList.toggle('active',String(i+1)===value));edgeOverlay.hidden=value!=='5';if(value==='5'){side.insertBefore(panels.boor,panels.nodes);side.insertBefore(animation,panels.nodes);}else{side.insertBefore(panels.nodes,animation);side.insertBefore(panels.boor,degree.parentElement);}rebuild();if(drawer.open)document.querySelector('#lab-demo').scrollIntoView({block:'start'});
   }
   function sync(input,value){input.value=value;input.previousElementSibling.querySelector('output').textContent=fmt(value,3);}
   function renderRecursion(result){
-    construction.visible=mode==='5'&&showConstruction;cutLabel.hidden=!construction.visible;
+    construction.visible=showConstruction;edgeOverlay.hidden=!showConstruction;
     const total=k*(k+1)/2,visible=animationMode==='steps'?Math.floor(reveal):total;
-    let phase=1;
-    if(animationMode==='steps'){
-      const whole=Math.floor(reveal),fraction=reveal-whole;
-      activeStep=Math.min(total-1,fraction>1e-8?whole:Math.max(0,whole-1));phase=fraction>1e-8?fraction:reveal>0?1:0;
-    }
+    let phase=1;if(animationMode==='steps'){const whole=Math.floor(reveal),fraction=reveal-whole;activeStep=Math.min(total-1,fraction>1e-8?whole:Math.max(0,whole-1));phase=fraction>1e-8?fraction:reveal>0?1:0;}
     stepSelect.value=activeStep;const step=deBoorStep(result,U,k,activeStep),tracked=basisSelected>=0?basisSelected:selected;
-    let visited=0,comparison=null,maxError=0;
-    const spanA=U[result.span],spanB=U[result.span+1];
+    let visited=0,comparison=null,maxError=0;const spanA=U[result.span],spanB=U[result.span+1];
     if(U.filter(x=>x===spanA).length>=k&&U.filter(x=>x===spanB).length>=k)comparison=casteljau(d.slice(result.span-k,result.span+1),(u-spanA)/(spanB-spanA));
-    castTable.hidden=!comparison;boorGrid.classList.toggle('bs-comparing',!!comparison);boorTitle.textContent=comparison?'de Boor 与 de Casteljau：同一割比的递推':'de Boor：割边比例递推三角图';
+    compareToggle.disabled=!comparison;if(!comparison)compareToggle.checked=false;
     recursionLines.forEach((line,r)=>{
-      const layer=result.layers[r]??[],count=r===0?layer.length:Math.max(0,Math.min(layer.length,visible-visited));
-      line.visible=r<=k;write(line,layer.slice(0,count));recursionDots[r].forEach((dot,j)=>{dot.visible=j<count;if(dot.visible)dot.position.set(...layer[j]);});
-      castLines[r].visible=!!comparison&&r<=k&&construction.visible;
+      const layer=result.layers[r]??[],count=r===0?layer.length:Math.max(0,Math.min(layer.length,visible-visited)),colour=constructionColor(r,k);
+      line.visible=r>0&&r<=k;line.material.color.set(colour);recursionMaterials[r].color.set(colour);write(line,layer.slice(0,count));
+      recursionDots[r].forEach((dot,j)=>{dot.visible=r>0&&j<count;if(dot.visible)dot.position.set(...layer[j]);});
+      castLines[r].visible=!!comparison&&compareToggle.checked&&r<=k&&showConstruction;
       if(comparison&&r<=k){write(castLines[r],comparison[r].slice(0,count));comparison[r].forEach((p,j)=>maxError=Math.max(maxError,Math.hypot(...p.map((x,h)=>x-layer[j][h]))));}
       if(r>0)visited+=layer.length;
     });
-    const cutPhase=Math.min(1,phase/.7);write(cutAM,[step.a,step.m]);write(cutMB,[step.m,step.b]);cutMarker.position.set(...step.a.map((x,i)=>x+cutPhase*(step.m[i]-x)));cutGroup.visible=showConstruction;
-    cutLabel.textContent=`第 ${step.r} 层 / 第 ${step.q+1} 个割边 · AM : MB = ${fmt(step.alpha)} : ${fmt(1-step.alpha)}\n青色 AM 占 α，粉色 MB 占 1−α；黄色点按比例移动。`;
-    drawRecursion(recursionCanvas,result,{tracked,active:activeStep,phase,visible,title:'de Boor'});
-    if(comparison){const t=(u-spanA)/(spanB-spanA);drawRecursion(castCanvas,{...result,layers:comparison,alphas:result.alphas.map((row,r)=>r?row.map(()=>t):row)},{tracked,active:activeStep,phase,visible,title:'de Casteljau'});}
-    drawRatios(ratioCanvas,step,U,u,cutPhase);const weights=basisValues(U,k,u);drawInfluences(influenceCanvas,result,weights,step,tracked);
-    const propagated=result.influences.at(-1)[0],error=Math.max(...propagated.map((x,j)=>Math.abs(x-weights[result.span-k+j])));
-    boorFeedback.textContent=`当前节点区间 [${U[result.span]}, ${U[result.span+1]}]；活动顶点 𝐝${result.span-k}…𝐝${result.span}。\n权重沿同一递推边传播：w = (1−α)w左 + αw右；最终各项 = Nᵢ,ₖ(u)，误差 ${error.toExponential(2)}。\n${comparison?'de Casteljau 对应点误差 '+maxError.toExponential(2)+'；两图横向割比完全相同。':'仅端点夹持且仍有内部节点，一般不是一段 Bézier 曲线。'}`;
-    stage.dataset.ratioAlpha=String(step.alpha);stage.dataset.weightError=String(error);stage.dataset.activeStep=String(activeStep);stage.dataset.ratioPhase=String(phase);
+    const edgePhase=Math.max(0,Math.min(1,(phase-.3)/.5)),colour=constructionColor(step.r,k);cutAM.material.color.set(colour);cutMarker.material.color.set(colour);
+    write(cutAM,[step.a,step.b]);cutAM.material.opacity=.55;cutAM.material.transparent=true;cutMarker.position.set(...step.a.map((x,i)=>x+edgePhase*(step.m[i]-x)));cutGroup.visible=showConstruction&&phase>=.3;
+    constructionModel={result,U:U.slice(),k,u,active:activeStep,phase,visible,selected,show:showConstruction,showControls:showPoints};
+    ladderRows=drawNodeLadder(ladderCanvas,result,U,k,u,{active:activeStep,phase,visible});
+    const phaseIndex=phase<.3?0:phase<.8?1:2;[...phases.children].forEach((item,i)=>item.classList.toggle('active',i===phaseIndex));
+    const superscript=['⁰','¹','²','³','⁴','⁵'];
+    boorFeedback.textContent=`l=${step.r}：[u${step.lo}, u${step.hi}] 上 u 的比例 → 控制边 𝐝${step.i-1}${superscript[step.r-1]}—𝐝${step.i}${superscript[step.r-1]}；α=${fmt(step.alpha)}。`;
+    bookVector.textContent=`U = [${U.map(x=>+x.toFixed(3)).join(', ')}]`;
+    const weights=basisValues(U,k,u),propagated=result.influences.at(-1)[0],error=Math.max(...propagated.map((x,j)=>Math.abs(x-weights[result.span-k+j])));
+    if(verification.open)drawInfluences(influenceCanvas,result,weights,step,tracked);
+    verificationText.textContent=`权重传播与 Cox–de Boor 误差 ${error.toExponential(2)}。${comparison?'de Casteljau 对应点误差 '+maxError.toExponential(2)+'。':'此段不是可直接用原局部顶点构造的 Bézier 特例。'}`;
+    stage.dataset.ratioAlpha=String(step.alpha);stage.dataset.weightError=String(error);stage.dataset.activeStep=String(activeStep);stage.dataset.ratioPhase=String(phase);stage.dataset.constructionLayer=step.r;stage.dataset.bezierComparison=String(!!comparison);
   }
   function update(){
     const comparisonMode=mode==='4';degree.disabled=comparisonMode;addButton.disabled=removeButton.disabled=comparisonMode;
     if(comparisonMode){
-      heartDraw.forEach((draw,i)=>{const [a,b]=domain(heartU[i],3),t=heartProgress===1?b:a+(b-a)*heartProgress;draw.current.position.set(...deBoor(heartD,heartU[i],3,t).point);draw.handles.forEach((p,j)=>p.material=j===selected?white:muted);drawBasis(heartPanels[i].plot,heartU[i],3,t,{width:curveWidth});drawKnotAxis(heartPanels[i].axis,heartU[i],3,t);const ss=knotSpans(heartU[i],3);heartPanels[i].summary.textContent=`${ss.length} 段 · 有效域 [${a}, ${b}]\n𝐫(${fmt(t)}) = ${vec(draw.current.position.toArray(),2)}\n内部节点：${[...new Set(heartU[i].filter(x=>x>a&&x<b))].map(x=>`${x} 重数${heartU[i].filter(y=>y===x).length}`).join('；')||'无'}`;});
+      heartDraw.forEach((draw,i)=>{const [a,b]=domain(heartU[i],3),t=heartProgress===1?b:a+(b-a)*heartProgress;draw.current.position.set(...deBoor(heartD,heartU[i],3,t).point);draw.handles.forEach((p,j)=>p.material=j===selected?white:muted);drawBasis(heartPanels[i].plot,heartU[i],3,t,{width:curveWidth});drawKnotAxis(heartPanels[i].axis,heartU[i],3,t);const ss=knotSpans(heartU[i],3);heartPanels[i].summary.textContent=`${ss.length} 段 · 𝐫(${fmt(t)})=${vec(draw.current.position.toArray(),2)}`;});
       segmentDots.forEach(p=>p.visible=false);gizmo.detach();sync(heartSlider,heartProgress);overlay.textContent='心形对照 · 共享控制顶点 · 各图独立节点编辑';
-      readout.textContent=`三次心形对照；7 个共享控制顶点。当前 𝐝${selected} = ${vec(heartD[selected])}\n非零段数：${heartU.map(knots=>knotSpans(knots,3).length).join(' / ')}。颜色对应参数区间和曲线段。\n左图非夹持，一般不经过端点；中图夹持；右图初始为两段 Bézier。`;
+      readout.textContent=`共享控制顶点：𝐝${selected}=${vec(heartD[selected])}`;
     }else{
       const [a,b]=domain(U,k);u=Math.max(a,Math.min(b,u));const result=deBoor(d,U,k,u),weights=basisValues(U,k,u),ss=spans();
       const actual=ss.findIndex(s=>s.index===result.span);if(mode!=='1')activeSegment=actual;
+      drawingMain.current.material=mode==='5'?recursionMaterials[k]:pink;drawingMain.current.renderOrder=mode==='5'?10:0;
       drawingMain.current.visible=mode!=='1'&&!(mode==='5'&&animationMode==='steps'&&reveal<k*(k+1)/2);drawingMain.current.position.set(...result.point);
-      const influence=weights[selected];drawingMain.handles.forEach((p,i)=>{p.visible=showPoints&&i<d.length;p.material=i===selected?white:weights[i]>1e-10?materials[i%8]:muted;});
-      drawingMain.curves.forEach((l,i)=>{const affects=ss[i]&&ss[i].b>U[selected]&&ss[i].a<U[selected+k+1];l.material.opacity=i===activeSegment?1:affects?.85:.2;l.material.transparent=true;});
+      drawingMain.handles.forEach((p,i)=>{p.visible=showPoints&&i<d.length;p.material=i===selected?white:mode==='5'?muted:weights[i]>1e-10?materials[i%8]:muted;});
+      drawingMain.curves.forEach((l,i)=>{l.material.color.set(mode==='5'?'#ff5b6c':splineColor(i));const affects=ss[i]&&ss[i].b>U[selected]&&ss[i].a<U[selected+k+1];l.material.opacity=i===activeSegment?1:affects?.85:.2;l.material.transparent=true;});
       segmentDots.forEach((p,i)=>{p.visible=mode==='1'&&i<ss.length;if(p.visible)p.position.set(...deBoor(d,U,k,ss[i].a+(ss[i].b-ss[i].a)*local[i],local[i]===1?'left':'right').point);});
       sync(uSlider,u);segmentSelect.value=activeSegment;drawKnotAxis(knotCanvas,U,k,u);
       if(['2','3','5'].includes(mode)){
-        drawBasis(basisCanvas,U,k,u,{level,selected:basisSelected,width:curveWidth});const values=level===k?weights:basisValues(U,level,u,currentSide());basisReadout.textContent=`显示 ${level} 次：${values.map((x,i)=>`N${i},${level}=${fmt(x)}`).join('；')}\n当前 k 次权重和 = ${fmt(weights.reduce((a,b)=>a+b,0),6)}；非零 ${weights.filter(x=>x>1e-10).length} 个。${basisSelected>=0?'支撑区间以图下彩条标出。':''}`;
+        drawBasis(basisCanvas,U,k,u,{level,selected:basisSelected,width:curveWidth});basisReadout.textContent=`Σ Nᵢ,ₖ = ${fmt(weights.reduce((a,b)=>a+b,0),3)} · 非零 ${weights.filter(x=>x>1e-10).length} 个 · 点击按钮高亮支撑区间`;
       }
       if(['2','3','5'].includes(mode)){const values=basisValues(U,level,u,currentSide());[...basisLegend.children].forEach((entry,i)=>{entry.classList.toggle('active',i===basisSelected);entry.querySelector('small').textContent=fmt(values[i]);});}
-      if(mode==='5')renderRecursion(result);else{construction.visible=false;cutLabel.hidden=true;}
-      const error=Math.hypot(...result.point.map((x,i)=>x-basisPoint(d,U,k,u)[i]));
-      overlay.textContent=`${names[mode]}\nk=${k} · ${d.length} 个控制顶点 · ${ss.length} 段\n白色：选中 𝐝${selected}；彩色：活动控制顶点 / 曲线段`;
-      readout.textContent=`𝐫(u)=Σ Nᵢ,ₖ(u)𝐝ᵢ；次数 k=${k}，n=${d.length-1}，节点数 ${U.length}。\nu=${fmt(u)} ∈ [${a}, ${b}]；第 ${actual+1} 段局部 u=${fmt((u-ss[actual].a)/(ss[actual].b-ss[actual].a))}；𝐫(u)=${vec(result.point)}\n𝐝${selected}=${vec(d[selected])}；其当前权重 ${fmt(influence)}；支撑 [${U[selected]}, ${U[selected+k+1]})。\n基函数加权与 de Boor 误差 ${error.toExponential(2)}；${playing?'播放中':'已暂停'}。${mode==='1'?'各段运动点使用各自独立局部参数。':''}`;
+      if(mode==='5')renderRecursion(result);else{construction.visible=false;edgeOverlay.hidden=true;}
+      if(mode==='5')overlay.innerHTML=`<span style="color:#b9c5d5">● 原始顶点</span>　${Array.from({length:k},(_,i)=>`<span style="color:${constructionColor(i+1,k)}">● l=${i+1}${i+1===k?' / 𝐫(u)':''}</span>`).join('　')}`;
+      else overlay.textContent=`k=${k} · ${d.length} 个控制顶点 · ${ss.length} 段`;
+      readout.textContent=`u=${fmt(u)} ∈ [${a}, ${b}] · 第 ${actual+1} 段局部 u=${fmt((u-ss[actual].a)/(ss[actual].b-ss[actual].a))}\n𝐫(u)=${vec(result.point)}；选中 𝐝${selected}=${vec(d[selected])}`;
+
     }
     stage.dataset.bsMode=mode;stage.dataset.count=points().length;stage.dataset.degree=comparisonMode?'3':String(k);stage.dataset.segments=(comparisonMode?heartU.map(knots=>knotSpans(knots,3).length).join(','):spans().length);stage.dataset.playing=String(playing);stage.dataset.reveal=String(Math.floor(reveal));stage.dataset.curveWidth=String(curveWidth);
   }
@@ -324,7 +343,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
       main.visible=false;axes.visible=false;renderer.setScissorTest(true);const stacked=matchMedia('(max-width:740px)').matches;
       for(let i=0;i<3;i++){hearts.forEach((g,j)=>g.visible=i===j);const rect=stacked?[0,h-(i+1)*h/3,w,h/3]:[i*w/3,0,w/3,h];fitHeartCamera(rect[2],rect[3]);renderer.setViewport(...rect);renderer.setScissor(...rect);renderer.render(view.scene,heartCamera);}
       hearts.forEach(g=>g.visible=true);renderer.setScissorTest(false);axes.visible=wasAxes;
-    }else{main.visible=true;hearts.forEach(g=>g.visible=false);renderer.setScissorTest(false);renderer.setViewport(0,0,w,h);renderer.render(view.scene,view.camera);}
+    }else{main.visible=true;hearts.forEach(g=>g.visible=false);renderer.setScissorTest(false);renderer.setViewport(0,0,w,h);renderer.render(view.scene,view.camera);if(mode==='5'&&constructionModel){edgeOverlay.style.height=h+'px';view.camera.updateMatrixWorld();drawProjectedConstruction(edgeOverlay,constructionModel.result,constructionModel.U,constructionModel.k,constructionModel.u,p=>{const v=new THREE.Vector3(...p).project(view.camera);return[(v.x+1)*w/2,(1-v.y)*h/2];},constructionModel);}}
   });
   animate(dt=>{
     if(!playing||gizmo.dragging||dragging)return;
@@ -334,6 +353,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     else{const [a,b]=domain(U,k);u=Math.min(b,u+dt*speed*(b-a)/12);if(u===b)pause();}
     update();
   });
+  verification.addEventListener('toggle',()=>update());
   const appearance=block(side,'外观与图层');
   range(appearance,'曲线线宽（px）',1,8,2,.5,value=>{curveWidth=value;wideLines.forEach(line=>line.material.linewidth=value);update();});
   appearance.append(pointToggle.parentElement,polygonToggle.parentElement,constructionToggle.parentElement);
@@ -354,8 +374,8 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   function placeConsole(){if(media.matches){drawer.append(side);sidebar.hidden=true;mobileOpen.hidden=false;}else{closeDrawer();disclosure.append(side);sidebar.hidden=false;disclosure.open=true;mobileOpen.hidden=true;}}
   media.addEventListener('change',placeConsole);placeConsole();
   new ResizeObserver(()=>update()).observe(extras);
-  info.innerHTML='<div class="formula"><b>r</b>(u) = Σᵢ₌₀ⁿ Nᵢ,ₖ(u) <b>d</b>ᵢ<br>U = [u₀,…,uₙ₊ₖ₊₁]；曲线有效域 [uₖ,uₙ₊₁]<br>Nᵢ,₀(u) = 1（uᵢ ≤ u &lt; uᵢ₊₁），否则为 0<br>Nᵢ,ₖ(u) = (u−uᵢ)/(uᵢ₊ₖ−uᵢ) Nᵢ,ₖ₋₁(u)<br>　+ (uᵢ₊ₖ₊₁−u)/(uᵢ₊ₖ₊₁−uᵢ₊₁) Nᵢ₊₁,ₖ₋₁(u)</div><p>𝐝ᵢ 是控制顶点，uᵢ 是节点，𝐫(u) 是曲线点；三者含义不同。次数统一记为 k。n+1 个控制顶点需要 n+k+2 个节点。递推公式的分母为零时，对应整项取零。</p><p>均匀节点 uⱼ=j−k，间距为 1，有效域从 0 开始，共 n−k+1 段。第 s 段局部参数 u∈[0,1] 与全局参数满足 u_global=s+u_local。固定 k 后在末端追加一个控制顶点，就增加一段，已有段不变。</p><p>基函数支撑在 [uᵢ,uᵢ₊ₖ₊₁) 内，控制顶点只影响局部区间。在有效曲线域内基函数非负、和为 1，一般位置至多有 k+1 个非零权重。完整基函数图覆盖全部节点范围，阴影标明有效曲线域；域外权重不强制归一化，曲线不外推。</p><p>内部节点重数为 q 时一般为 Cᵏ⁻ᑫ 连续。简单节点一般 Cᵏ⁻¹；三次曲线的单、双、三重内部节点分别一般为 C²、C¹、C⁰；内部 k+1 重节点允许断开，画线时逐段采样，不能跨断点连线。零长度区间不计作曲线段。</p><div class="formula"><b>d</b>ᵢ⁽⁰⁾ = <b>d</b>ᵢ（i=ℓ−k,…,ℓ）<br>αᵢ⁽ʳ⁾ = (u−uᵢ)/(uᵢ₊ₖ₋ᵣ₊₁−uᵢ)<br><b>d</b>ᵢ⁽ʳ⁾ = (1−αᵢ⁽ʳ⁾)<b>d</b>ᵢ₋₁⁽ʳ⁻¹⁾ + αᵢ⁽ʳ⁾<b>d</b>ᵢ⁽ʳ⁻¹⁾<br><b>r</b>(u) = <b>d</b>ℓ⁽ᵏ⁾；u∈[uℓ,uℓ₊₁)</div><p>de Boor 用当前非零节点区间附近 k+1 个控制顶点逐层插值。内部节点默认取右侧区间，有效域右端点取左极限，非夹持曲线的最后一个基函数不能强制取 1。</p><p>单段 Bézier 特例必须同时满足：k+1 个控制顶点、两端各 k+1 重节点、没有内部节点。此时基函数等于 Bernstein 基函数，de Boor 各层等于 de Casteljau。仅有端点重复且仍有内部节点，一般不是使用全部原控制顶点的一段 Bézier。心形右图是两段三次 Bézier，可逐段比较。</p>';
-  instructions.innerHTML='<p>展示 1 每段都有独立的局部 u 滑块和彩色运动点；选中段后观察相关顶点。展开画面下方连接处，查看解析左右导数。增加控制顶点前可先暂停动画对比段数。</p><p>展示 2 专门观察均匀基函数；展示 3 编辑非均匀节点及间距，观察基函数与曲线同步变化。Nᵢ,ₖ 上的 i 是编号、k 是次数；点击彩色标识高亮对应基函数。节点轴下逐项列出全部 uᵢ 与完整 U。</p><p>展示 4 是展示 3 的心形特例。三图共享控制顶点、各自编辑节点；可载入展示 3 继续构造。节点轴先选择编号再拖动，或直接输入节点数值；不合法输入保留在编辑框并标红，曲线保持上次有效状态。端节点范围也可数值调整。输入新值后切换焦点即可继续输入其他节点。左图不保证闭合，中、右图初始插值重合端点。</p><p>展示 5 的比例三角图在基函数图上方。青、粉两段分别占 α 和 1−α；节点区间割比与空间割边相同，黄色点逐步演示比例。点击基函数标识，可跟踪该控制顶点的权重如何沿递推边传播，最终成为 Nᵢ,ₖ(u)。可固定参数逐点递推，也可让参数沿曲线移动。单步控制当前动画方式；重置回到起点。选择单段 Bézier 特例，或从心形右图载入，查看两种算法对应点误差。节点预设和次数变化会明确重新生成节点；普通展示切换不会改动控制顶点。</p><p>默认平面直接拖动顶点，数值框可输入 XYZ；空间模式选择顶点后拖三轴。拖动背景旋转、滚轮缩放、右键平移，手机用双指缩放和平移；点击“打开参数面板”调节节点与 u，底部面板展开时上方保留曲线窗口，收起后恢复大图。图层开关在动画中保持。当前显示的 u 数值和选中顶点坐标见画面下方。</p>';
+  info.innerHTML='<div class="formula"><b>r</b>(u) = Σᵢ₌₀ⁿ Nᵢ,ₖ(u) <b>d</b>ᵢ<br>U = [u₀,…,uₙ₊ₖ₊₁]；曲线有效域 [uₖ,uₙ₊₁]<br>Nᵢ,₀(u) = 1（uᵢ ≤ u &lt; uᵢ₊₁），否则为 0<br>Nᵢ,ₖ(u) = (u−uᵢ)/(uᵢ₊ₖ−uᵢ) Nᵢ,ₖ₋₁(u)<br>　+ (uᵢ₊ₖ₊₁−u)/(uᵢ₊ₖ₊₁−uᵢ₊₁) Nᵢ₊₁,ₖ₋₁(u)</div><p>𝐝ᵢ 是控制顶点，uᵢ 是节点，𝐫(u) 是曲线点；三者含义不同。次数统一记为 k。n+1 个控制顶点需要 n+k+2 个节点，下标为 u₀…uₙ₊ₖ₊₁。例如 n=6、k=3 时是 u₀…u₁₀，共 11 个节点。递推公式的分母为零时，对应整项取零。</p><p>均匀节点 uⱼ=j−k，间距为 1，有效域从 0 开始，共 n−k+1 段。第 s 段局部参数 u∈[0,1] 与全局参数满足 u_global=s+u_local。固定 k 后在末端追加一个控制顶点，就增加一段，已有段不变。</p><p>基函数支撑在 [uᵢ,uᵢ₊ₖ₊₁) 内，控制顶点只影响局部区间。在有效曲线域内基函数非负、和为 1，一般位置至多有 k+1 个非零权重。完整基函数图覆盖全部节点范围，阴影标明有效曲线域；域外权重不强制归一化，曲线不外推。</p><p>内部节点重数为 q 时一般为 Cᵏ⁻ᑫ 连续。简单节点一般 Cᵏ⁻¹；三次曲线的单、双、三重内部节点分别一般为 C²、C¹、C⁰；内部 k+1 重节点允许断开，画线时逐段采样，不能跨断点连线。零长度区间不计作曲线段。</p><div class="formula"><b>d</b>ᵢ⁽⁰⁾ = <b>d</b>ᵢ（i=ℓ−k,…,ℓ）<br>αᵢ⁽ʳ⁾ = (u−uᵢ)/(uᵢ₊ₖ₋ᵣ₊₁−uᵢ)<br><b>d</b>ᵢ⁽ʳ⁾ = (1−αᵢ⁽ʳ⁾)<b>d</b>ᵢ₋₁⁽ʳ⁻¹⁾ + αᵢ⁽ʳ⁾<b>d</b>ᵢ⁽ʳ⁻¹⁾<br><b>r</b>(u) = <b>d</b>ℓ⁽ᵏ⁾；u∈[uℓ,uℓ₊₁)</div><p>de Boor 用当前非零节点区间附近 k+1 个控制顶点逐层插值。内部节点默认取右侧区间，有效域右端点取左极限，非夹持曲线的最后一个基函数不能强制取 1。</p><p>单段 Bézier 特例必须同时满足：k+1 个控制顶点、两端各 k+1 重节点、没有内部节点。此时基函数等于 Bernstein 基函数，de Boor 各层等于 de Casteljau。仅有端点重复且仍有内部节点，一般不是使用全部原控制顶点的一段 Bézier。心形右图是两段三次 Bézier，可逐段比较。</p>';
+  instructions.innerHTML='<p>通过标题下方切换五项展示。先调参数 u 和节点，再编辑控制顶点；节点不合法时会标红，曲线保留上一次有效状态。</p><p>展示 5 可先载入“课件三次示例”。从节点轴定位 u，观察蓝色第一层、绿色第二层、红色曲线点如何依次生成。点击下方某条区间行，可高亮上方对应割边；选择固定参数动画后，用播放或单步观察。</p><p>平面模式直接拖点；空间模式使用三轴或坐标输入。手机打开底部参数面板设置，收起后恢复大图。基函数按钮位于图下，数值表示对应控制顶点的最终权重。</p>';
   // Initialize the visibility without stopping the project's default autoplay.
   switchMode('1');playing=true;play.textContent='暂停';update();
 }

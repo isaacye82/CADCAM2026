@@ -1,8 +1,8 @@
-import {basisLevels,domain,knotSpans} from '../bspline.js';
+import {basisLevels,domain,knotSpans,deBoorStep} from '../bspline.js';
 const colors=['#57dfcf','#6b9dff','#f7bc69','#f58ca9','#c89eff','#e0dd70','#64c9f5','#efaa8c'];
 export const splineColor=i=>colors[((i%colors.length)+colors.length)%colors.length];
 export function graphCanvas(parent,label,height=230){const c=document.createElement('canvas');c.className='bs-graph';c.setAttribute('aria-label',label);c.style.height=height+'px';parent.append(c);return c;}
-function setup(canvas){const w=Math.max(180,canvas.clientWidth),h=parseFloat(canvas.style.height),ratio=Math.min(devicePixelRatio,2);if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#0b1421';ctx.fillRect(0,0,w,h);ctx.font='12px sans-serif';return{ctx,w,h};}
+function setup(canvas,transparent=false){const w=Math.max(180,canvas.clientWidth),h=parseFloat(canvas.style.height),ratio=Math.min(devicePixelRatio,2);if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);if(!transparent){ctx.fillStyle='#0b1421';ctx.fillRect(0,0,w,h);}ctx.font='12px sans-serif';return{ctx,w,h};}
 export function drawBasis(canvas,U,k,u,{level=k,selected=-1,width=2}={}){
   const {ctx,w,h}=setup(canvas),left=35,right=w-15,top=28,bottom=h-38,min=U[0],max=U.at(-1),[a,b]=domain(U,k),X=t=>left+(t-min)/(max-min)*(right-left),Y=v=>bottom-v*(bottom-top);
   ctx.fillStyle='#57dfcf15';ctx.fillRect(X(a),top,X(b)-X(a),bottom-top);
@@ -30,52 +30,6 @@ export function drawKnotAxis(canvas,U,k,u){
   ctx.strokeStyle='#f58ca9';ctx.beginPath();ctx.moveTo(X(u),26);ctx.lineTo(X(u),y+30);ctx.stroke();
 }
 
-// Diagram x-positions follow the actual interpolation ratio. y denotes recursion depth only.
-export function drawRecursion(canvas,result,{tracked=-1,active=0,phase=1,visible=Infinity,title='de Boor'}={}){
-  const {ctx,w,h}=setup(canvas),k=result.layers.length-1,left=30,right=w-30,top=45,gap=(h-75)/Math.max(1,k),xs=[Array.from({length:k+1},(_,i)=>left+(right-left)*i/Math.max(1,k))];
-  ctx.fillStyle='#b9cfe8';ctx.fillText(`${title} · 横向按 α 分割；纵向表示递推层`,14,18,w-28);
-  let index=0;const trackedLocal=tracked-(result.span-k);
-  for(let r=1;r<=k;r++){
-    const row=[];
-    for(let q=0;q<result.layers[r].length;q++){
-      const alpha=result.alphas[r][q],a=xs[r-1][q],b=xs[r-1][q+1],x=(1-alpha)*a+alpha*b,y=top+r*gap,py=y-gap;row.push(x);
-      const isActive=index===active,shown=index<visible||isActive;
-      if(shown){
-        for(const [px,factor,parent,colour,symbol] of [[a,1-alpha,q,'#f58ca9','1−α'],[b,alpha,q+1,'#57dfcf','α']]){
-          const participates=trackedLocal>=0&&(result.influences[r-1][parent][trackedLocal]??0)*factor>1e-12;
-          ctx.strokeStyle=isActive?colour:participates?'#89b4da':'#30435c';ctx.lineWidth=isActive?2.5:participates?2:1;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x,y);ctx.stroke();
-          if(isActive){ctx.fillStyle=colour;ctx.fillText(symbol,(px+x)/2+3,(py+y)/2);}
-        }
-        if(isActive){
-          ctx.strokeStyle='#57dfcf';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(a,py);ctx.lineTo(x,py);ctx.stroke();ctx.strokeStyle='#f58ca9';ctx.beginPath();ctx.moveTo(x,py);ctx.lineTo(b,py);ctx.stroke();
-          const slide=Math.min(1,phase/.7),drop=Math.max(0,(phase-.7)/.3);ctx.fillStyle='#f7bc69';ctx.beginPath();ctx.arc(a+(x-a)*slide,py+(y-py)*drop,6,0,Math.PI*2);ctx.fill();
-        }
-      }index++;
-    }xs.push(row);
-  }
-  index=0;
-  for(let r=0;r<=k;r++)for(let q=0;q<result.layers[r].length;q++){
-    const shown=r===0||index<visible;if(r>0)index++;if(!shown)continue;
-    const x=xs[r][q],y=top+r*gap,weight=result.influences[r][q][trackedLocal]??0,globalIndex=result.span-k+r+q;
-    ctx.fillStyle=r===0?splineColor(globalIndex):weight>1e-12?'#57dfcf':'#193149';ctx.beginPath();ctx.arc(x,y,r===k?8:6,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d6e5f5';ctx.lineWidth=1;ctx.stroke();
-    ctx.fillStyle='#c9dbef';ctx.textAlign=x>w-70?'right':x<65?'left':'center';ctx.fillText(r===0?`𝐝${globalIndex}`:r===k?'𝐫(u)':`𝐝${globalIndex}⁽${r}⁾`,x,y+19);
-    if(trackedLocal>=0){ctx.fillStyle='#f7bc69';ctx.fillText(`w=${weight.toFixed(3)}`,x,y-12);}
-  }
-  ctx.textAlign='left';
-}
-export function drawRatios(canvas,step,U,u,phase=1){
-  const {ctx,w,h}=setup(canvas),left=30,right=w-30,alpha=step.alpha,cut=left+(right-left)*alpha;
-  const segment=(y,text)=>{
-    ctx.fillStyle='#bcd0e7';ctx.fillText(text,left,y-24,right-left);ctx.lineWidth=7;ctx.strokeStyle='#57dfcf';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(cut,y);ctx.stroke();ctx.strokeStyle='#f58ca9';ctx.beginPath();ctx.moveTo(cut,y);ctx.lineTo(right,y);ctx.stroke();
-    ctx.fillStyle='#f7bc69';ctx.beginPath();ctx.arc(left+(cut-left)*phase,y,6,0,Math.PI*2);ctx.fill();
-  };
-  segment(54,`节点割比：α = (u−u${step.lo}) / (u${step.hi}−u${step.lo}) = ${alpha.toFixed(3)}`);
-  ctx.fillStyle='#9eb8d4';ctx.fillText(`u${step.lo}=${+U[step.lo].toFixed(3)}`,left,77);ctx.fillText(`u=${u.toFixed(3)}`,Math.max(left,Math.min(right-60,cut-20)),35);ctx.textAlign='right';ctx.fillText(`u${step.hi}=${+U[step.hi].toFixed(3)}`,right,77);ctx.textAlign='left';
-  const distance=Math.hypot(...step.a.map((x,i)=>x-step.b[i]));
-  segment(126,`空间割边：AM : MB = α : (1−α) = ${alpha.toFixed(3)} : ${(1-alpha).toFixed(3)}`);
-  ctx.fillStyle='#9eb8d4';ctx.fillText(`A → M：${(distance*alpha).toFixed(3)}`,left,151);ctx.textAlign='right';ctx.fillText(`M → B：${(distance*(1-alpha)).toFixed(3)}`,right,151);ctx.textAlign='left';
-  if(distance<1e-10)ctx.fillText('A、B 重合：几何长度为零，α 仍由节点区间确定。',left,h-8,right-left);
-}
 export function drawInfluences(canvas,result,weights,step,tracked){
   const {ctx,w,h}=setup(canvas),start=result.span-result.layers.length+1,left=24,right=w-20,local=tracked-start;
   const bar=(y,values,title)=>{ctx.fillStyle='#c4d7ed';ctx.fillText(title,left,y-12);let x=left;values.forEach((v,j)=>{ctx.fillStyle=splineColor(start+j);ctx.fillRect(x,y,v*(right-left),15);if(v>.09){ctx.fillStyle='#071321';ctx.fillText(`d${start+j}`,x+3,y+12);}x+=v*(right-left);});};
@@ -83,4 +37,50 @@ export function drawInfluences(canvas,result,weights,step,tracked){
   bar(92,result.influences.at(-1)[0],'最终曲线点：传播后的权重 = Cox–de Boor 基函数值');
   const propagated=result.influences.at(-1)[0][local]??0,expected=weights[tracked]??0;
   ctx.fillStyle='#f7bc69';ctx.fillText(`选中 N_${tracked},${result.layers.length-1}：传播 ${propagated.toFixed(4)} = 基函数 ${expected.toFixed(4)}`,left,h-8,right-left);
+}
+
+// One colour per recursion layer, shared by spatial polygons and parameter intervals.
+export const constructionColor=(r,k)=>r===0?'#b9c5d5':r===k?'#ff5b6c':['#568fff','#38d58c','#bd93ef','#55cddc','#eabd67'][r-1];
+export function drawNodeLadder(canvas,result,U,k,u,{active=0,phase=1,visible=Infinity}={}){
+  const {ctx,w,h}=setup(canvas),left=30,right=w-58,top=48,rowGap=29,rows=[],X=t=>left+(t-U[0])/(U.at(-1)-U[0])*(right-left);
+  const [a,b]=domain(U,k);ctx.fillStyle='#57dfcf12';ctx.fillRect(X(a),26,X(b)-X(a),h-38);
+  ctx.fillStyle='#568fff25';ctx.fillRect(X(U[result.span]),28,X(U[result.span+1])-X(U[result.span]),30);
+  ctx.strokeStyle='#9fb4cf';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(right,top);ctx.stroke();
+  ctx.fillStyle='#b9cde5';ctx.font='11px sans-serif';ctx.fillText('① 在节点轴上定位 u；下方各行把同一 u 映射到对应边',12,16,w-24);
+  for(const t of new Set(U)){
+    const ids=U.map((x,i)=>x===t?i:-1).filter(i=>i>=0);ctx.strokeStyle='#9fb4cf';ctx.beginPath();ctx.moveTo(X(t),top-7);ctx.lineTo(X(t),top);ctx.stroke();ctx.textAlign='center';ctx.fillStyle='#a9c0db';ctx.fillText(ids.length>1?`u${ids[0]}…u${ids.at(-1)}`:`u${ids[0]}`,Math.max(left+6,Math.min(right-6,X(t))),top+16);
+  }
+  ctx.textAlign='left';ctx.strokeStyle='#59718b';ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(X(u),24);ctx.lineTo(X(u),h-10);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#e6eefb';ctx.beginPath();ctx.arc(X(u),top,5,0,Math.PI*2);ctx.fill();ctx.fillText(`u=${u.toFixed(3)}`,Math.max(left,Math.min(right-50,X(u)+7)),top-12);
+  let index=0,y=94;
+  for(let r=1;r<=k;r++){
+    const begin=y;
+    for(let q=0;q<=k-r;q++){
+      const step=deBoorStep(result,U,k,index),selected=index===active,shown=index<visible||selected,colour=constructionColor(r,k),x0=X(U[step.lo]),x1=X(U[step.hi]);
+      if(selected){ctx.fillStyle=colour+'18';ctx.fillRect(12,y-16,w-24,27);}
+      ctx.strokeStyle=shown?colour:'#33485e';ctx.lineWidth=selected?2.6:1.6;ctx.beginPath();ctx.moveTo(x0,y-6);ctx.lineTo(x0,y);ctx.lineTo(x1,y);ctx.lineTo(x1,y-6);ctx.stroke();
+      for(const t of new Set(U.slice(step.lo+1,step.hi))){ctx.beginPath();ctx.moveTo(X(t),y-5);ctx.lineTo(X(t),y);ctx.stroke();}
+      ctx.font='10px sans-serif';ctx.fillStyle=shown?'#b3c8e1':'#647b96';ctx.textAlign='left';ctx.fillText(`u${step.lo}`,x0,y-8);ctx.textAlign='right';ctx.fillText(`u${step.hi}`,x1,y-8);ctx.textAlign='left';
+      if(shown){const travel=selected?Math.min(1,phase/.3):1;ctx.fillStyle=colour;ctx.beginPath();ctx.arc(x0+(X(u)-x0)*travel,y,selected?6:4.5,0,Math.PI*2);ctx.fill();if(selected){ctx.strokeStyle='#eef6ff';ctx.lineWidth=1;ctx.stroke();}}
+      rows.push({index,y0:y-17,y1:y+11,x0,x1,r,lo:step.lo,hi:step.hi});index++;y+=rowGap;
+    }
+    ctx.fillStyle=constructionColor(r,k);ctx.font='bold 13px sans-serif';ctx.fillText(`l=${r}`,w-44,(begin+y-rowGap)/2+4);y+=9;
+  }
+  canvas.dataset.intervalRows=rows.length;canvas.dataset.layers=k;return rows;
+}
+export function drawProjectedConstruction(canvas,result,U,k,u,project,{active=0,phase=1,visible=Infinity,selected=-1,show=true,showControls=true}={}){
+  const {ctx,w,h}=setup(canvas,true);if(!show)return;
+  const label=(text,p,colour='#d1dfef',dx=9,dy=-10)=>{ctx.font='13px sans-serif';const width=ctx.measureText(text).width,x=Math.max(5,Math.min(w-width-5,p[0]+dx)),y=Math.max(14,Math.min(h-8,p[1]+dy));ctx.fillStyle='#0b1421de';ctx.fillRect(x-2,y-12,width+4,16);ctx.fillStyle=colour;ctx.fillText(text,x,y);};
+  if(showControls)result.layers[0].forEach((p,j)=>{const i=result.span-k+j,screen=project(p);label(`𝐝${i}`,screen,constructionColor(0,k));if(i===selected){ctx.strokeStyle='#f5d47d';ctx.lineWidth=2;ctx.beginPath();ctx.arc(screen[0],screen[1],8,0,Math.PI*2);ctx.stroke();}});
+  const step=deBoorStep(result,U,k,active),a=project(step.a),b=project(step.b),m=project(step.m),vx=b[0]-a[0],vy=b[1]-a[1],length=Math.hypot(vx,vy),colour=constructionColor(step.r,k);
+  if(length<3){label('父点重合：节点比例仍有效',m,colour,12,22);return;}
+  let normal=[-vy/length,vx/length];const parents=result.layers[step.r-1].map(project),centre=parents.reduce((sum,p)=>[sum[0]+p[0]/parents.length,sum[1]+p[1]/parents.length],[0,0]);
+  if(normal[0]*((a[0]+b[0])/2-centre[0])+normal[1]*((a[1]+b[1])/2-centre[1])<0)normal=normal.map(x=>-x);
+  const offset=p=>[p[0]+normal[0]*25,p[1]+normal[1]*25],aa=offset(a),bb=offset(b),mm=offset(m);
+  ctx.strokeStyle=colour;ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(aa[0],aa[1]);ctx.lineTo(bb[0],bb[1]);ctx.stroke();
+  for(const t of new Set(U.slice(step.lo,step.hi+1))){const fraction=(t-U[step.lo])/(U[step.hi]-U[step.lo]),p=offset(project(step.a.map((x,i)=>x+fraction*(step.b[i]-x))));ctx.beginPath();ctx.moveTo(p[0]-normal[0]*5,p[1]-normal[1]*5);ctx.lineTo(p[0]+normal[0]*5,p[1]+normal[1]*5);ctx.stroke();}
+  ctx.fillStyle=colour;ctx.beginPath();ctx.arc(mm[0],mm[1],5,0,Math.PI*2);ctx.fill();ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(mm[0],mm[1]);ctx.lineTo(m[0],m[1]);ctx.stroke();ctx.setLineDash([]);
+  label(`u${step.lo}`,aa,'#adbed2',normal[0]*7-8,normal[1]*9-5);label(`u${step.hi}`,bb,'#adbed2',normal[0]*7-8,normal[1]*9-5);label('u',mm,colour,normal[0]*8,normal[1]*10-5);
+  if(phase>=.3){const progress=Math.min(1,Math.max(0,(phase-.3)/.5)),point=project(step.a.map((x,i)=>x+progress*(step.m[i]-x)));label(`𝐝${step.i}⁽${step.r}⁾`,point,colour,8,22);}
+  if(visible>=k*(k+1)/2)label('𝐫(u)',project(result.point),constructionColor(k,k),10,21);
 }

@@ -109,11 +109,6 @@ body[data-page="12.bspline"] [hidden]{display:none!important}
 .bs-heart-panel{min-width:0;padding:8px;border:1px solid var(--line);border-radius:6px}
 .bs-heart-panel h3{font-size:13px}
 .bs-heart-panel .bs-knot-inputs{grid-template-columns:repeat(2,minmax(0,1fr))}
-.bs-triangles{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;overflow-x:auto}
-.bs-triangles.bs-comparing{grid-template-columns:repeat(2,minmax(0,1fr))}
-.bs-recursion-row{display:flex;gap:5px;margin:8px 0;align-items:flex-start;flex-wrap:wrap}
-.bs-recursion-row strong{font-size:12px;color:#a6bbd5;width:100%}
-.bs-recursion-cell{display:block;border-left:3px solid #57dfcf;background:#132235;padding:7px;font:11px/1.8 Consolas,sans-serif;overflow-wrap:anywhere;max-width:100%}
 .bs-continuity summary{font-size:13px;line-height:1.8;cursor:pointer;color:#b9d0e8;padding:6px 0}
 @media(max-width:740px){
   .stage[data-bs-mode="4"]{height:900px}
@@ -121,7 +116,7 @@ body[data-page="12.bspline"] [hidden]{display:none!important}
   .bs-heart-labels span{position:absolute;top:8px;left:8px;font-size:12px;border:0}
   .bs-heart-labels span:nth-child(2){top:calc(33.333% + 8px)}
   .bs-heart-labels span:nth-child(3){top:calc(66.666% + 8px)}
-  .bs-heart-columns,.bs-triangles.bs-comparing{grid-template-columns:minmax(0,1fr)}
+  .bs-heart-columns{grid-template-columns:minmax(0,1fr)}
   .bs-heart-panel .bs-knot-inputs{grid-template-columns:repeat(3,minmax(0,1fr))}
   .bs-knot-inputs input{font-size:16px;min-height:40px}
   .bs-extra{padding:12px}
@@ -142,8 +137,6 @@ body[data-page="12.bspline"] [hidden]{display:none!important}
 .bs-node-current input{width:100%;min-width:0}
 .bs-node-details{margin:8px 0}
 .bs-node-details summary{cursor:pointer;font-size:13px;color:#c4d8ec;padding:8px 0}
-.bs-cut-label{position:absolute;bottom:10px;left:12px;right:12px;pointer-events:none;font:12px/1.8 Consolas,sans-serif;color:#cfe0f1;background:#0b1421e8;border:1px solid #31506b;border-radius:5px;padding:7px 10px;white-space:pre-line}
-.bs-triangles>div{min-width:0}
 .bs-control-drawer:not([open]){display:none!important}
 .bs-control-drawer{position:fixed;inset:auto 0 0;margin:0;width:100%;max-width:none;max-height:45dvh;overflow-y:auto;padding:12px 16px;border:1px solid #47637e;border-radius:15px 15px 0 0;background:#121e2e;color:#c8d9ec;z-index:100}
 .bs-drawer-header{position:sticky;top:-12px;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;background:#121e2e;z-index:2}
@@ -157,5 +150,26 @@ body[data-page="12.bspline"] [hidden]{display:none!important}
   .bs-control-drawer input[type=range]{height:30px}
   body.bs-panel-open .stage,body.bs-panel-open .stage[data-bs-mode="4"]{height:32dvh!important}
   body.bs-panel-open{padding-bottom:46dvh}
-  .bs-cut-label{font-size:10px;line-height:1.6;bottom:5px;padding:4px 7px}
+}
+
+/* Lesson 12: reference-style polygon construction, with matching knot-interval rows. */
+.bs-edge-overlay{position:absolute;inset:0;border:0!important;border-radius:0!important;pointer-events:none;background:transparent}
+.stage[data-bs-mode="5"]{height:440px}
+.bs-book-figure{padding-top:12px}
+.bs-construction-phases{display:flex;gap:8px;list-style:none;padding:0;margin:0 0 12px;counter-reset:construction}
+.bs-construction-phases li{counter-increment:construction;flex:1;min-width:0;padding:7px 9px;border:1px solid #2c4058;border-radius:5px;font-size:12px;line-height:1.65;color:#92aac5}
+.bs-construction-phases li:before{content:counter(construction) ". ";font-weight:700}
+.bs-construction-phases li.active{border-color:#568fff;background:#172e48;color:#e5f0ff}
+.bs-ladder-scroll{max-width:100%;overflow-x:auto}
+.bs-ladder-scroll canvas{max-width:none}
+.bs-verification{margin-top:12px}
+.bs-verification summary{padding:8px 0;font-size:13px;color:#a9c3de;cursor:pointer}
+.bs-verification .bs-graph{margin-top:8px}
+.bs-feedback:empty{display:none}
+.bs-basis-legend{margin-top:12px;margin-bottom:6px}
+.bs-basis-summary{margin:6px 0}
+@media(max-width:740px){
+  .stage[data-bs-mode="5"]{height:350px}
+  .bs-construction-phases{gap:4px}
+  .bs-construction-phases li{font-size:11px;padding:6px 5px}
 }

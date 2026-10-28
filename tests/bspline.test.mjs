@@ -91,3 +91,11 @@ test('de Boor 逐边传播的最终权重等于 Cox-de Boor，且每个割边比
     }}
   }
 });
+
+test('课件三次示例：三层的3/2/1区间与控制边割比逐项对应',async()=>{
+  const {deBoorTeachingExample,deBoorStep}=await import('../src/bspline.js'),{d,U,k,u}=deBoorTeachingExample(),result=deBoor(d,U,k,u);
+  assert.equal(k,3);assert.equal(d.length,4);assert.deepEqual(U,[-3,-2,-1,0,1,2,3,4]);assert.deepEqual(result.layers.map(row=>row.length),[4,3,2,1]);
+  const intervals=[[1,4],[2,5],[3,6],[2,4],[3,5],[3,4]],ratios=[5/6,1/2,1/6,3/4,1/4,1/2];
+  intervals.forEach(([lo,hi],index)=>{const step=deBoorStep(result,U,k,index);assert.deepEqual([step.lo,step.hi],[lo,hi]);assert.ok(Math.abs(step.alpha-ratios[index])<1e-12);close(step.m,step.a.map((x,i)=>(1-step.alpha)*x+step.alpha*step.b[i]));});
+  close(result.point,basisPoint(d,U,k,u));
+});
