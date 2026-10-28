@@ -1,6 +1,6 @@
 # CAD/CAM 课程交互实验室
 
-12 个课程作业、12 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
+12 个课程作业、14 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
 
 ```text
 src/ + scripts/build.mjs
@@ -100,3 +100,9 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 `src/bspline.js` 提供独立数学算法；`src/modules/bspline.js` 和 `bspline-plots.js` 实现 Three.js 场景、节点轴及基函数图。主曲线支持最多 24 个控制顶点、平面拖动、空间三轴及坐标输入。节点编辑支持间距滑块、节点轴拖动和逐项数值，保留非递减约束，无效输入标红且不应用。B 样条曲线默认线宽 3px，可调；控制多边形及递推辅助线固定 1.5px，基函数线宽独立固定。控制顶点名称随控制多边形显示或隐藏，顶点及曲线点标记缩小；WebGL 使用本地 Three.js Line2，基函数图下方提供可点击的 Nᵢ,ₖ，数值不再重复列出。展示 1/2 使用均匀节点，展示 3/5 保留可编辑节点；心形三图可载入展示 3。控制台优先显示参数 u 和节点设置，手机提供不遮挡主要曲线窗口的非模态底部参数面板。de Boor 按课件用蓝／绿／红控制多边形与同色节点区间逐层构造，不再使用抽象三角图；区间行可点击，附四控制点的三次课件示例。权重验证默认折叠，主画面保留一次完整节点矢量和必要读数。
 
 验收与已知限制见 [作业 12 验收记录](docs/validation/BSPLINE.md)。可选浏览器验收：`python3 tests/browser/bspline.py`，需要 Python Playwright、`/usr/bin/chromium` 和本机 socket 权限；结果写入 `work/12-bspline/`。生产页面不增加新依赖。普通构建不更新发布 ZIP。
+
+## 作业 11 三项实验与首页目录
+
+首页按作业 10 → 11A → 11B → 11C → 作业 12 排列。原 `courses/11.bezier-surface.html` 为实验 A；新增实验 B 为 `courses/11.bezier-interpolation.html`（均匀/弦长参数插值），实验 C 为 `courses/11.bezier-tensor-product_surface.html`（双三次张量积动画与双视图）。页面保留中文教学内容，文件名使用英文。首页作业11的三个入口集中成组，搜索和分类包含全部14个实验。
+
+上传页面源码位于 `src/standalone/`，`scripts/standalone.mjs` 在构建中添加网站外壳、实验标识及相邻导航。两个页面使用原有内联 Canvas 算法，无外部依赖；实验 C 的光照为逐三角形、顶点颜色插值、逐像素法线光照。构建会重新生成全部发布文件，不应直接编辑发布目录。其余三维课程使用 Three.js/WebGL2。

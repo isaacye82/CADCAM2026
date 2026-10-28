@@ -1,12 +1,12 @@
 {
   "file protocol": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at file:///workspace/CADCAM2026/CADCAM2026_Show/courses/12.bspline.html",
-  "homepage 12 cards": "PASS",
+  "homepage 14 cards": "PASS",
   "WebGL2": "PASS",
   "new five exhibition titles": "PASS",
   "default curve width 3px": "PASS",
   "line width pixel counts": {
-    "1px": 996,
-    "4px": 1929
+    "1px": 992,
+    "4px": 1926
   },
   "WebGL line width changes actual pixels": "PASS",
   "degree 1": "PASS",
