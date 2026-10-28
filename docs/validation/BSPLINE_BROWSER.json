@@ -5,8 +5,8 @@
   "new five exhibition titles": "PASS",
   "default curve width 3px": "PASS",
   "line width pixel counts": {
-    "1px": 1436,
-    "4px": 2369
+    "1px": 995,
+    "4px": 1928
   },
   "WebGL line width changes actual pixels": "PASS",
   "degree 1": "PASS",
@@ -36,6 +36,13 @@
   "control labels visible 5": "PASS",
   "control labels follow polygon toggle 5": "PASS",
   "labels independent of point markers": "PASS",
+  "preset selection persists uneven": "PASS",
+  "preset selection persists repeat": "PASS",
+  "basis default all highlighted": "PASS",
+  "basis multiple toggles": "PASS",
+  "basis toggles off": "PASS",
+  "basis restore all": "PASS",
+  "node vector in curve window": "PASS",
   "standalone nonuniform basis and curve": "PASS",
   "indexed basis legend": "PASS",
   "indexed full knot vector": "PASS",

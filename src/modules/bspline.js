@@ -14,6 +14,7 @@ const heartNames=['均匀 · 不插值端点','端点 4 重 · 内部均匀','�
 
 export function bsplineDemo({stage,side,readout,info,instructions}){
   const view=makeView(stage,{position:[0,0,13],grid:false,axes:false});view.controls.enableRotate=false;
+  let basisActive=null;
   let mode='1',k=3,d=seed(),U=uniformKnots(7,3),u=.6,selected=0,activeSegment=0,local=Array(4).fill(.5),is3D=false;
   let playing=true,speed=1,animationMode='scan',reveal=0,showPoints=true,showPolygon=true,showConstruction=true,level=3,basisSelected=-1;
   let curveWidth=3,activeStep=0,editableKnots=null;const curveLines=[];
@@ -50,8 +51,8 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const overlay=el('div',{class:'overlay bs-status'},stage),heartLabels=el('div',{class:'bs-heart-labels',hidden:''},stage);
   heartNames.forEach((text,i)=>el('span',{text:`${['左','中','右'][i]}：${text}`},heartLabels));
   const extras=document.querySelector('#extras'),panels={};
-  const switcher=block(side,'五项展示');
-  const modeSelect=select(switcher,'展示内容',names,mode,value=>switchMode(value));
+  const switcher=block(side,'五项展示内容');
+  const modeSelect=select(switcher,'五项展示内容',names,mode,value=>switchMode(value));
   el('p',{class:'muted',text:'展示 1/2 为均匀构造；展示 3/5 保留可编辑节点；展示 4 是展示 3 的心形特例。'},switcher);
   const status=el('p',{class:'bs-feedback',role:'status','aria-live':'polite'},side);
   function feedback(text){status.textContent=text;}
@@ -59,14 +60,15 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     const next=+value;if(next>=d.length){degree.value=k;feedback('控制顶点不足：提高次数前请先增加顶点。');return;}
     pause();k=next;level=k;U=defaultKnots();u=domain(U,k)[0];local=[];feedback('次数已改变，重新生成当前展示的节点预设；控制顶点不变。');rebuild();
   });
-  const edit=block(side,'控制顶点 𝐝ᵢ');
-  const pointSelect=select(edit,'选中控制顶点',{},0,value=>{selected=+value;if(mode==='5'){basisSelected=selected;basisSelect.value=selected;}attach();update();});
+  const edit=el('div',{},side);
+  const pointSelect=select(edit,'选中控制顶点 𝐝ᵢ',{},0,value=>{selected=+value;if(mode==='5'){basisSelected=selected;basisSelect.value=selected;}attach();update();});
   const coordinates=vectorInput(edit,'控制顶点坐标',d[0],values=>{pause();points()[selected]=values;geometryChanged();});
-  const dimension=select(edit,'编辑维度',{plane:'平面：直接拖动顶点',space:'空间：三轴控制柄'},'plane',value=>{
+  const dimension=select(edit,'2D/3D 曲线',{plane:'2D 曲线：直接拖动顶点',space:'3D 曲线：三轴控制柄'},'plane',value=>{
     if(mode==='4'){dimension.value='plane';return;}
     is3D=value==='space';view.controls.enableRotate=is3D;gizmo.detach();view.camera.position.set(...(is3D?[7,5,10]:[0,0,13]));view.controls.target.set(0,0,0);attach();
     feedback(is3D?'选择控制顶点后拖动 XYZ 控制柄；也可数值编辑。':'直接拖动顶点；拖动保持该点 Z 不变，空间坐标仍可数值编辑。');
   });
+  coordinates[0].closest('.block')?.querySelector('h3')?.remove();
   const editRow=el('div',{class:'row'},edit);
   const addButton=button(editRow,'增加控制顶点',()=>{
     if(d.length>=MAX){feedback(`本页最多支持 ${MAX} 个控制顶点。`);return;}pause();const p=d.at(-1);d.push([p[0]+.8,-p[1]*.7,is3D?.8:0]);U=defaultKnots();selected=d.length-1;feedback('追加一个顶点并重建当前节点预设；均匀曲线增加一段。');rebuild();
@@ -74,25 +76,23 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const removeButton=button(editRow,'删除选中顶点',()=>{
     if(d.length<=k+1){feedback('至少保留 k+1 个控制顶点。');return;}pause();d.splice(selected,1);selected=Math.min(selected,d.length-1);U=defaultKnots();feedback('删除后重建当前节点预设，相关曲线段随之更新。');rebuild();
   });
-  button(edit,'重置控制顶点',()=>{pause();if(mode==='4'){heartD=heartPoints();}else{d=seed();if(k>d.length-1)k=3;U=defaultKnots();}selected=0;rebuild();});
+  button(editRow,'重置控制顶点',()=>{pause();if(mode==='4'){heartD=heartPoints();}else{d=seed();if(k>d.length-1)k=3;U=defaultKnots();}selected=0;rebuild();});
   const pointToggle=check(edit,'显示控制顶点',true,value=>{showPoints=value;attach();update();});
   const polygonToggle=check(edit,'显示控制多边形',true,value=>{showPolygon=value;drawStatic();});
-  button(edit,'空间波形预设',()=>{pause();if(mode==='4'){feedback('请在展示 1/2/3/5 中使用空间预设。');return;}d=seed().map((p,i)=>[p[0],p[1],Math.cos(i*1.3)]);selected=0;U=defaultKnots();is3D=true;dimension.value='space';view.controls.enableRotate=true;view.camera.position.set(7,5,10);rebuild();});
+  button(edit,'载入 3D 波形曲线',()=>{pause();if(mode==='4'){feedback('请在展示 1/2/3/5 中使用空间预设。');return;}d=seed().map((p,i)=>[p[0],p[1],Math.cos(i*1.3)]);selected=0;U=defaultKnots();is3D=true;dimension.value='space';view.controls.enableRotate=true;view.camera.position.set(7,5,10);rebuild();});
 
   panels.local=block(side,'各段独立局部参数 u ∈ [0,1]');const localControls=el('div',{},panels.local);
   panels.global=block(side,'统一参数与节点');
   const uSlider=range(panels.global,'全局参数 u',0,4,u,.001,value=>{pause();u=value;reveal=0;if(mode==='1'){const ss=spans(),span=findSpan(U,k,u);activeSegment=ss.findIndex(s=>s.index===span);local[activeSegment]=(u-ss[activeSegment].a)/(ss[activeSegment].b-ss[activeSegment].a);syncLocal();}update();});
   const segmentSelect=select(panels.global,'选中曲线段',{},0,value=>{activeSegment=+value;const s=spans()[activeSegment];u=(s.a+s.b)/2;if(mode==='1'){local[activeSegment]=.5;syncLocal();}pause();update();});
   panels.basis=block(side,'基函数递推');
-  const levelSelect=select(panels.basis,'显示基函数次数',{},k,value=>{level=+value;basisSelected=-1;refreshBasisOptions();refreshBasisLegend();update();});
+  const levelSelect=select(panels.basis,'显示基函数次数',{},k,value=>{level=+value;basisSelected=-1;basisActive=null;refreshBasisOptions();refreshBasisLegend();update();});
   const basisSelect=select(panels.basis,'选中基函数',{},-1,value=>{basisSelected=+value;if(mode==='5'&&basisSelected>=0){selected=basisSelected;attach();}update();});basisSelect.parentElement.hidden=true;
   panels.nodes=block(side,'节点预设');
   const nodePreset=select(panels.nodes,'主曲线节点预设',{uniform:'均匀 · 间距 1',clamped:'端点 k+1 重 · 内部均匀',uneven:'非均匀简单节点',repeat:'内部 k 重节点',custom:'自定义 / 当前节点'},'uniform',value=>{
     if(value==='custom')return;
-    pause();const count=d.length;U=value==='uniform'?uniformKnots(count,k):clampedKnots(count,k);
-    if(value==='uneven')U=U.map(x=>x>0?x*x/(count-k):x);
-    if(value==='repeat'&&count>k+1){const internal=count-k-1;for(let i=0;i<Math.min(k,internal);i++)U[k+1+i]=1;}
-    u=domain(U,k)[0];feedback('已应用节点预设，控制顶点不变。');rebuild();
+    pause();U=presetKnots(value);
+    u=domain(U,k)[0];feedback('已应用节点预设，控制顶点不变。');rebuild();nodePreset.value=value;
   });
   const nodeEditor=el('div',{},panels.nodes);
   panels.boor=block(side,'de Boor 比例构造');
@@ -116,7 +116,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   range(animation,'动画速度',.25,3,1,.25,value=>speed=value);
   button(side,'重置观察视角',()=>{view.camera.position.set(...(is3D?[7,5,10]:[0,0,13]));view.controls.target.set(0,0,0);});
 
-  const axisWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'节点轴与曲线参数区间'},axisWrap);const knotCanvas=graphCanvas(axisWrap,'主曲线完整节点轴',125);const knotLabels=el('div',{class:'bs-node-vector'},axisWrap);const knotVector=el('p',{class:'bs-values'},axisWrap);
+  const axisWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'节点轴与曲线参数区间'},axisWrap);const knotCanvas=graphCanvas(axisWrap,'主曲线完整节点轴',125);const knotLabels=el('div',{class:'bs-node-vector'},axisWrap);const knotVector=el('p',{class:'bs-values bs-stage-vector'},stage);
   const basisWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'Cox–de Boor 基函数'},basisWrap);
   const basisCanvas=graphCanvas(basisWrap,'B样条基函数完整节点区间'),basisLegend=el('div',{class:'bs-basis-legend'},basisWrap);
   const basisReadout=el('p',{class:'bs-values bs-basis-summary'},basisWrap);
@@ -124,20 +124,21 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const boorWrap=el('section',{class:'bs-extra bs-book-figure'},extras);el('h3',{text:'de Boor：节点区间 → 控制边 → 新控制多边形'},boorWrap);
   const phases=el('ol',{class:'bs-construction-phases'},boorWrap);['定位 u 与相对比例','映射到对应控制边','连接新点，进入下一层'].forEach(text=>el('li',{text},phases));
   const ladderScroll=el('div',{class:'bs-ladder-scroll'},boorWrap),ladderCanvas=graphCanvas(ladderScroll,'de Boor 逐层节点区间',301);
-  const boorFeedback=el('p',{class:'bs-values'},boorWrap),bookVector=el('p',{class:'bs-values'},boorWrap);
+  const boorFeedback=el('p',{class:'bs-values'},boorWrap),bookVector=knotVector;
   const verification=el('details',{class:'bs-verification'},basisWrap);el('summary',{text:'查看权重对应与数值验证'},verification);
   const influenceCanvas=graphCanvas(verification,'递推权重与基函数对应',145),verificationText=el('p',{class:'bs-values'},verification);
-  el('p',{text:'点击上方某个基函数，可高亮相应控制顶点。按钮数值就是该顶点对最终曲线点的权重。'},verification);
+  el('p',{text:'点击上方某个基函数，可高亮相应控制顶点。再次点击可取消高亮；“全部显示”恢复默认。按钮数值就是该顶点对最终曲线点的权重。'},verification);
   extras.insertBefore(boorWrap,basisWrap);
   ladderCanvas.addEventListener('pointerdown',event=>{
     const rect=ladderCanvas.getBoundingClientRect(),y=event.clientY-rect.top,row=ladderRows.find(row=>y>=row.y0&&y<=row.y1);
     if(row){pause();activeStep=row.index;if(animationMode==='steps')reveal=activeStep+1;update();}
   });
   const heartWrap=el('section',{class:'bs-extra'},extras);el('h3',{text:'展示 3 的心形特例：三组可编辑节点，共享控制顶点'},heartWrap);el('p',{text:'节点可在轴上拖动或逐项输入。重复节点会叠在同一位置，可用下方编号选择；编辑保持节点非递减。共享端点 𝐝₀=𝐝₆ 仅是预设，修改后不会强制重合。'},heartWrap);
+  const heartVectors=el('div',{class:'bs-heart-vectors'},stage);
   const heartColumns=el('div',{class:'bs-heart-columns'},heartWrap),heartPanels=[];
   heartNames.forEach((name,i)=>{
     const container=el('article',{class:'bs-heart-panel'},heartColumns);el('h3',{text:`${['左图','中图','右图'][i]}：${name}`},container);
-    const axis=graphCanvas(container,`${name}节点轴`,125),labels=el('div',{class:'bs-node-vector'},container),vector=el('p',{class:'bs-values'},container),plot=graphCanvas(container,`${name}基函数`,200),summary=el('p',{class:'bs-values'},container),editor=el('div',{},container);
+    const axis=graphCanvas(container,`${name}节点轴`,125),labels=el('div',{class:'bs-node-vector'},container),vector=el('p',{class:'bs-values'},heartVectors),plot=graphCanvas(container,`${name}基函数`,200),summary=el('p',{class:'bs-values'},container),editor=el('div',{},container);
     button(container,'在展示3构造此曲线',()=>{pause();d=heartD.map(p=>p.slice());k=3;level=3;U=heartU[i].slice();u=domain(U,k)[0];selected=0;modeSelect.value='3';switchMode('3',true);feedback(`已载入${['左图','中图','右图'][i]}节点和共享控制顶点。`);});
     heartPanels.push({container,axis,plot,summary,editor,labels,vector});
   });
@@ -151,14 +152,20 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   function refreshBasisOptions(){
     basisSelect.replaceChildren();el('option',{value:-1,text:'全部基函数'},basisSelect);for(let i=0;i<U.length-level-1;i++)el('option',{value:i,text:`N${i},${level} · [${U[i]}, ${U[i+level+1]})`},basisSelect);basisSelect.value=basisSelected;
   }
+  function presetKnots(value){
+    const count=d.length;let knots=value==='uniform'?uniformKnots(count,k):clampedKnots(count,k);
+    if(value==='uneven')knots=knots.map(x=>x>0?x*x/(count-k):x);
+    if(value==='repeat'&&count>k+1)for(let i=0;i<Math.min(k,count-k-1);i++)knots[k+1+i]=1;
+    return knots;
+  }
   function rebuild(editors=true){
-    nodePreset.value=isUniform()?'uniform':U.every((x,i)=>x===clampedKnots(d.length,k)[i])?'clamped':'custom';
+    nodePreset.value=['uniform','clamped','uneven','repeat'].find(name=>U.every((x,i)=>x===presetKnots(name)[i]))??'custom';
     selected=Math.min(selected,points().length-1);degree.value=mode==='4'?3:k;degree.disabled=mode==='4';dimension.disabled=mode==='4';addButton.disabled=removeButton.disabled=mode==='4';
     pointSelect.replaceChildren();points().forEach((p,i)=>el('option',{value:i,text:`𝐝${i}`},pointSelect));
     const [a,b]=domain(U,k);u=Math.max(a,Math.min(b,u));uSlider.min=a;uSlider.max=b;uSlider.step=(b-a)/2000;
     const ss=spans();local=ss.map((s,i)=>local[i]??.5);activeSegment=Math.min(activeSegment,ss.length-1);segmentSelect.replaceChildren();ss.forEach((s,i)=>el('option',{value:i,text:`第 ${i+1} 段 · [${s.a}, ${s.b}]`},segmentSelect));
     localControls.replaceChildren();localInputs=ss.map((s,i)=>range(localControls,`第 ${i+1} 段局部 u`,0,1,local[i],.001,value=>{pause();activeSegment=i;local[i]=value;u=s.a+value*(s.b-s.a);update();}));
-    level=Math.min(level,k);levelSelect.replaceChildren();for(let q=0;q<=k;q++)el('option',{value:q,text:`${q} 次基函数`},levelSelect);if(mode==='5')level=k;levelSelect.value=level;levelSelect.disabled=mode==='5';basisSelected=mode==='5'?(basisSelected>=0&&basisSelected<d.length?basisSelected:basisValues(U,k,u).indexOf(Math.max(...basisValues(U,k,u)))):-1;refreshBasisOptions();if(mode==='5')selected=basisSelected;
+    level=Math.min(level,k);levelSelect.replaceChildren();for(let q=0;q<=k;q++)el('option',{value:q,text:`${q} 次基函数`},levelSelect);if(mode==='5')level=k;levelSelect.value=level;levelSelect.disabled=mode==='5';basisSelected=-1;basisActive=null;refreshBasisOptions();
     if(editors&&mode==='4')heartPanels.forEach((panel,i)=>makeEditor(panel.editor,()=>heartU[i],3,7,value=>{heartU[i]=value;heartIndex=i;drawStatic();update();},panel.axis));
     else if(editors)makeEditor(nodeEditor,()=>U,k,d.length,value=>{U=value;const [a,b]=domain(U,k);const old=u;u=Math.max(a,Math.min(b,u));feedback(old!==u?'参数已限制到新的有效域。':'');rebuild(false);},knotCanvas);
     stepSelect.replaceChildren();let stepIndex=0;for(let r=1;r<=k;r++)for(let q=0;q<=k-r;q++)el('option',{value:stepIndex++,text:`l=${r} · 第 ${q+1} 个新点`},stepSelect);activeStep=Math.min(activeStep,stepIndex-1);
@@ -176,8 +183,8 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     parent.replaceChildren();parent.hidden=true;vector.textContent=`U = [${knots.map(x=>+x.toFixed(3)).join(', ')}]`;
   }
   function refreshBasisLegend(){
-    basisLegend.replaceChildren();for(let i=0;i<U.length-level-1;i++){
-      const entry=button(basisLegend,'',()=>{basisSelected=i;basisSelect.value=i;if(level===k&&i<d.length){selected=i;attach();}update();});
+    basisLegend.replaceChildren();button(basisLegend,'全部显示',()=>{basisActive=null;update();}).classList.add('bs-basis-all');for(let i=0;i<U.length-level-1;i++){
+      const entry=button(basisLegend,'',()=>{if(basisActive===null)basisActive=new Set();if(basisActive.has(i))basisActive.delete(i);else basisActive.add(i);basisSelected=i;basisSelect.value=i;if(level===k&&i<d.length){selected=i;attach();}update();});
       entry.innerHTML=`N<sub>${i},${level}</sub> <small></small>`;entry.setAttribute('aria-label',`基函数 N_${i},${level}`);entry.style.borderColor=splineColor(i);entry.dataset.basisIndex=i;
     }
   }
@@ -307,16 +314,16 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
       segmentDots.forEach((p,i)=>{p.visible=mode==='1'&&i<ss.length;if(p.visible)p.position.set(...deBoor(d,U,k,ss[i].a+(ss[i].b-ss[i].a)*local[i],local[i]===1?'left':'right').point);});
       sync(uSlider,u);segmentSelect.value=activeSegment;drawKnotAxis(knotCanvas,U,k,u);
       if(['2','3','5'].includes(mode)){
-        drawBasis(basisCanvas,U,k,u,{level,selected:basisSelected});basisReadout.textContent=`Σ Nᵢ,ₖ = ${fmt(weights.reduce((a,b)=>a+b,0),3)} · 非零 ${weights.filter(x=>x>1e-10).length} 个 · 点击按钮高亮支撑区间`;
+        drawBasis(basisCanvas,U,k,u,{level,selected:basisSelected,active:basisActive});basisReadout.textContent=`Σ Nᵢ,ₖ = ${fmt(weights.reduce((a,b)=>a+b,0),3)} · 非零 ${weights.filter(x=>x>1e-10).length} 个 · 点击按钮高亮支撑区间`;
       }
-      if(['2','3','5'].includes(mode)){const values=basisValues(U,level,u,currentSide());[...basisLegend.children].forEach((entry,i)=>{entry.classList.toggle('active',i===basisSelected);entry.querySelector('small').textContent=fmt(values[i]);});}
+      if(['2','3','5'].includes(mode)){const values=basisValues(U,level,u,currentSide());[...basisLegend.querySelectorAll('[data-basis-index]')].forEach((entry,i)=>{entry.classList.toggle('active',basisActive===null||basisActive.has(i));entry.setAttribute('aria-pressed',String(basisActive===null||basisActive.has(i)));entry.querySelector('small').textContent=fmt(values[i]);});}
       if(mode==='5')renderRecursion(result);else{construction.visible=false;edgeOverlay.hidden=false;}
       if(mode==='5')overlay.innerHTML=`<span style="color:#b9c5d5">● 原始顶点</span>　${Array.from({length:k},(_,i)=>`<span style="color:${constructionColor(i+1,k)}">● l=${i+1}${i+1===k?' / 𝐫(u)':''}</span>`).join('　')}`;
       else overlay.textContent=`k=${k} · ${d.length} 个控制顶点 · ${ss.length} 段`;
       readout.textContent=`u=${fmt(u)} ∈ [${a}, ${b}] · 第 ${actual+1} 段局部 u=${fmt((u-ss[actual].a)/(ss[actual].b-ss[actual].a))}\n𝐫(u)=${vec(result.point)}；选中 𝐝${selected}=${vec(d[selected])}`;
 
     }
-    stage.dataset.bsMode=mode;stage.dataset.count=points().length;stage.dataset.degree=comparisonMode?'3':String(k);stage.dataset.segments=(comparisonMode?heartU.map(knots=>knotSpans(knots,3).length).join(','):spans().length);stage.dataset.playing=String(playing);stage.dataset.reveal=String(Math.floor(reveal));stage.dataset.curveWidth=String(curveWidth);
+    heartVectors.hidden=mode!=='4';knotVector.hidden=mode==='4';knotVector.textContent=`U = [${U.map(x=>+x.toFixed(3)).join(', ')}]`;stage.dataset.bsMode=mode;stage.dataset.count=points().length;stage.dataset.degree=comparisonMode?'3':String(k);stage.dataset.segments=(comparisonMode?heartU.map(knots=>knotSpans(knots,3).length).join(','):spans().length);stage.dataset.playing=String(playing);stage.dataset.reveal=String(Math.floor(reveal));stage.dataset.curveWidth=String(curveWidth);
   }
   gizmo.addEventListener('dragging-changed',event=>{view.controls.enabled=!event.value;if(event.value)pause();});
   gizmo.addEventListener('objectChange',()=>{if(gizmo.object){d[selected]=gizmo.object.position.toArray();geometryChanged();}});
@@ -368,9 +375,9 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const appearance=block(side,'外观与图层');
   range(appearance,'曲线线宽（px）',1,8,3,.5,value=>{curveWidth=value;curveLines.forEach(line=>line.material.linewidth=value);update();});
   appearance.append(pointToggle.parentElement,polygonToggle.parentElement,constructionToggle.parentElement);
-  const axesOptions=side.querySelector('.coordinate-options');
+  const axesOptions=side.querySelector('.coordinate-options');axesOptions.querySelector('h3')?.remove();appearance.querySelector('h3')?.remove();appearance.append(...axesOptions.children);axesOptions.remove();const toggles=el('div',{class:'bs-toggle-row'},appearance);appearance.querySelectorAll('label.check').forEach(label=>toggles.append(label));const layoutHeading=switcher.querySelector('h3');if(layoutHeading)layoutHeading.remove();const coordinateBlock=coordinates[0].parentElement.parentElement;coordinateBlock.querySelector('h3')?.remove();edit.insertBefore(editRow,dimension.parentElement);
   const resetViewButton=[...side.children].find(node=>node.tagName==='BUTTON'&&node.textContent==='重置观察视角');
-  side.append(status,panels.global,panels.nodes,heartSide,animation,panels.boor,degree.parentElement,panels.local,panels.basis,edit,appearance,axesOptions,resetViewButton,switcher);
+  side.append(status,panels.global,panels.nodes,heartSide,animation,panels.boor,degree.parentElement,panels.local,panels.basis,edit,appearance,resetViewButton,switcher);resetViewButton.textContent='恢复默认视角';
   const tabs=el('nav',{class:'bs-mode-tabs','aria-label':'B样条展示切换'},document.querySelector('.page-head'));
   const modeTabs=Object.entries(names).map(([value,name])=>button(tabs,name,()=>switchMode(value)));
   const sidebar=document.querySelector('#lab-controls'),disclosure=document.querySelector('#control-disclosure');

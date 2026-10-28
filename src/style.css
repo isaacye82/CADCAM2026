@@ -173,3 +173,9 @@ body[data-page="12.bspline"] [hidden]{display:none!important}
   .bs-construction-phases{gap:4px}
   .bs-construction-phases li{font-size:11px;padding:6px 5px}
 }
+
+body[data-page="12.bspline"] .bs-stage-vector{position:absolute;bottom:8px;left:12px;right:12px;margin:0;padding:5px 8px;background:#0b1421cc;pointer-events:none;font-size:12px;z-index:3;overflow-wrap:anywhere} body[data-page="12.bspline"] #side .coordinate-options{display:flex;flex-wrap:wrap} body[data-page="12.bspline"] .bs-extra{margin-top:10px}
+
+.bs-heart-vectors{position:absolute;bottom:8px;left:0;right:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));pointer-events:none;z-index:3}.bs-heart-vectors[hidden]{display:none}.bs-heart-vectors p{margin:0 6px;padding:5px;background:#0b1421cc;font-size:11px;overflow-wrap:anywhere}@media(max-width:740px){.bs-heart-vectors{top:0;bottom:0;grid-template-columns:1fr;grid-template-rows:repeat(3,1fr)}.bs-heart-vectors p{align-self:end;margin-bottom:8px}}
+
+.bs-toggle-row{display:flex;flex-wrap:wrap;gap:8px 14px}.bs-toggle-row .check{margin:0}

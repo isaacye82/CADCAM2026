@@ -3,7 +3,7 @@ const colors=['#57dfcf','#6b9dff','#f7bc69','#f58ca9','#c89eff','#e0dd70','#64c9
 export const splineColor=i=>colors[((i%colors.length)+colors.length)%colors.length];
 export function graphCanvas(parent,label,height=230){const c=document.createElement('canvas');c.className='bs-graph';c.setAttribute('aria-label',label);c.style.height=height+'px';parent.append(c);return c;}
 function setup(canvas,transparent=false,clear=true){const w=Math.max(180,canvas.clientWidth),h=parseFloat(canvas.style.height),ratio=Math.min(devicePixelRatio,2);if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);if(clear)ctx.clearRect(0,0,w,h);if(!transparent){ctx.fillStyle='#0b1421';ctx.fillRect(0,0,w,h);}ctx.font='12px sans-serif';return{ctx,w,h};}
-export function drawBasis(canvas,U,k,u,{level=k,selected=-1}={}){
+export function drawBasis(canvas,U,k,u,{level=k,selected=-1,active=null}={}){
   const {ctx,w,h}=setup(canvas),left=35,right=w-15,top=28,bottom=h-38,min=U[0],max=U.at(-1),[a,b]=domain(U,k),X=t=>left+(t-min)/(max-min)*(right-left),Y=v=>bottom-v*(bottom-top);
   ctx.fillStyle='#57dfcf15';ctx.fillRect(X(a),top,X(b)-X(a),bottom-top);
   ctx.strokeStyle='#3b536e';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(left,bottom);ctx.lineTo(right,bottom);ctx.stroke();
@@ -11,7 +11,7 @@ export function drawBasis(canvas,U,k,u,{level=k,selected=-1}={}){
   const unique=[...new Set(U)];unique.forEach(t=>{ctx.strokeStyle='#2b4056';ctx.beginPath();ctx.moveTo(X(t),top);ctx.lineTo(X(t),bottom+4);ctx.stroke();ctx.fillStyle='#9eb3cb';ctx.save();ctx.translate(X(t),bottom+17);ctx.rotate(-.3);ctx.fillText(Number(t.toFixed(2)),0,0);ctx.restore();});
   const count=U.length-level-1;
   for(let i=0;i<count;i++){
-    ctx.strokeStyle=splineColor(i);ctx.globalAlpha=selected<0||i===selected?1:.22;ctx.lineWidth=i===selected?6:3.2;
+    ctx.strokeStyle=splineColor(i);ctx.globalAlpha=active===null||active.has(i)?1:.15;ctx.lineWidth=active!==null&&active.has(i)?4:3.2;
     for(let span=0;span<U.length-1;span++)if(U[span]<U[span+1]){
       ctx.beginPath();for(let j=0;j<=24;j++){const t=U[span]+(U[span+1]-U[span])*j/24,v=basisLevels(U,level,t,j===24?'left':'right')[level][i];j?ctx.lineTo(X(t),Y(v)):ctx.moveTo(X(t),Y(v));}ctx.stroke();
     }

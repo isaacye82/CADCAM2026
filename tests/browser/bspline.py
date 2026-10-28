@@ -65,7 +65,7 @@ with sync_playwright() as p:
  page.get_by_role('button',name='重置动画',exact=True).click();ok('reset local animation',all(float(control(f'第 {i} 段局部 u').input_value())==0 for i in range(1,5)))
  page.get_by_role('button',name='单步',exact=True).click();ok('single-step local marker',abs(float(control('第 1 段局部 u').input_value())-.025)<1e-6)
  # Direct planar control-vertex drag, projected using the known initial teaching camera.
- page.get_by_role('button',name='重置控制顶点',exact=True).click();control('选中控制顶点').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();box=canvas.bounding_box()
+ page.get_by_role('button',name='重置控制顶点',exact=True).click();control('选中控制顶点 𝐝ᵢ').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();box=canvas.bounding_box()
  point=[float(control('控制顶点坐标 '+axis).input_value()) for axis in 'XYZ'];scale=box['height']/(2*13*math.tan(math.radians(43)/2));x=box['x']+box['width']/2+point[0]*scale;y=box['y']+box['height']/2-point[1]*scale
  page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+25,y-20,steps=8);page.mouse.up();ok('planar pointer drag',abs(float(control('控制顶点坐标 X').input_value())-point[0])>.1)
  before=page.locator('#readout').inner_text();number('控制顶点坐标 Y',2.5);ok('coordinate input updates curve',before!=page.locator('#readout').inner_text())
@@ -87,7 +87,17 @@ with sync_playwright() as p:
  control('显示控制顶点').uncheck();page.wait_for_timeout(80)
  ok('labels independent of point markers',int(labels.get_attribute('data-control-label-count'))==7)
  control('显示控制顶点').check()
- mode(3);ok('standalone nonuniform basis and curve',control('主曲线节点预设').is_visible() and control('主曲线节点预设').input_value()=='custom');ok('indexed basis legend',page.get_by_role('button',name='基函数 N_0,3',exact=True).is_visible());ok('indexed full knot vector','U = [' in page.locator('#extras').inner_text() and 'u₀ … uₙ₊ₖ₊₁' not in page.locator('#extras').inner_text());label='主曲线完整节点轴 u4';old=page.locator('#readout').inner_text();number(label,.7);ok('nonuniform node updates curve',control(label).input_value()=='0.7' and old!=page.locator('#readout').inner_text());ok('node preset reflects custom knots',control('主曲线节点预设').input_value()=='custom')
+ mode(3)
+ for preset in ['uneven','repeat']:
+  control('主曲线节点预设').select_option(preset);ok('preset selection persists '+preset,control('主曲线节点预设').input_value()==preset)
+ control('主曲线节点预设').select_option('uneven')
+ buttons=page.locator('.bs-basis-legend [data-basis-index]')
+ ok('basis default all highlighted',all(x=='true' for x in buttons.evaluate_all('(es)=>es.map(e=>e.getAttribute("aria-pressed"))')))
+ buttons.nth(0).click();buttons.nth(1).click();ok('basis multiple toggles',buttons.nth(0).get_attribute('aria-pressed')=='true' and buttons.nth(1).get_attribute('aria-pressed')=='true' and buttons.nth(2).get_attribute('aria-pressed')=='false')
+ buttons.nth(0).click();ok('basis toggles off',buttons.nth(0).get_attribute('aria-pressed')=='false')
+ page.get_by_role('button',name='全部显示',exact=True).click();ok('basis restore all',all(x=='true' for x in buttons.evaluate_all('(es)=>es.map(e=>e.getAttribute("aria-pressed"))')))
+ ok('node vector in curve window',page.locator('#stage .bs-stage-vector').is_visible() and not page.locator('#extras').get_by_text('U = [',exact=False).count())
+ mode(3);ok('standalone nonuniform basis and curve',control('主曲线节点预设').is_visible() and control('主曲线节点预设').input_value()=='uneven');ok('indexed basis legend',page.get_by_role('button',name='基函数 N_0,3',exact=True).is_visible());ok('indexed full knot vector','U = [' in page.locator('#stage').inner_text() and 'u₀ … uₙ₊ₖ₊₁' not in page.locator('#extras').inner_text());slide('全局参数 u',.65);label='主曲线完整节点轴 u4';old=page.locator('#readout').inner_text();number(label,.7);ok('nonuniform node updates curve',control(label).input_value()=='0.7' and old!=page.locator('#readout').inner_text());ok('node preset reflects custom knots',control('主曲线节点预设').input_value()=='custom')
  old=page.locator('#readout').inner_text();number(label,-10);ok('invalid node rejected',control(label).get_attribute('aria-invalid')=='true' and old==page.locator('#readout').inner_text())
  number(label,.8);ok('valid node recovers',control(label).get_attribute('aria-invalid') is None)
  # Continuous axis dragging of u4 must preserve handlers across redraws.
@@ -96,7 +106,7 @@ with sync_playwright() as p:
  control('拖动节点编号').select_option('4');beforeGap=control(label).input_value();slide('节点间距 Δu',.5);ok('node spacing slider updates knot',control(label).input_value()!=beforeGap);saved=control(label).input_value();mode(2);mode(3);ok('editable knots survive uniform exhibit',control(label).input_value()==saved)
  mode(4);ok('heart 4/4/2 spans',segments()=='4,4,2');ok('heart fixed degree 3',control('曲线次数 k').input_value()=='3' and control('曲线次数 k').is_disabled())
  right=page.locator('.bs-heart-panel').nth(2);input4=right.get_by_label('端点 4 重 · 内部 3 重节点轴 u4',exact=True);right.locator('details.bs-node-details').evaluate('(e)=>e.open=true');input4.fill('.8');input4.dispatch_event('input');ok('heart knot edit changes segment count',segments()=='4,4,3')
- before=page.locator('#readout').inner_text();control('选中控制顶点').select_option('1');number('控制顶点坐标 X',-2.3);ok('heart shared control edit',before!=page.locator('#readout').inner_text())
+ before=page.locator('#readout').inner_text();control('选中控制顶点 𝐝ᵢ').select_option('1');number('控制顶点坐标 X',-2.3);ok('heart shared control edit',before!=page.locator('#readout').inner_text())
  for index,name in [(0,'均匀 · 不插值端点'),(1,'端点 4 重 · 内部均匀')]:
   panel=page.locator('.bs-heart-panel').nth(index);node=panel.get_by_label(name+'节点轴 u4',exact=True);beforeImage=hashlib.sha256(page.locator('#stage > canvas:not(.bs-edge-overlay)').screenshot()).hexdigest();panel.locator('details.bs-node-details').evaluate('(e)=>e.open=true');node.fill('.6');node.dispatch_event('input');page.wait_for_timeout(100);ok('heart column '+str(index)+' independent knot edit',node.get_attribute('aria-invalid') is None and beforeImage!=hashlib.sha256(page.locator('#stage > canvas:not(.bs-edge-overlay)').screenshot()).hexdigest())
  page.get_by_role('button',name='恢复心形对照预设',exact=True).click();page.screenshot(path=str(out/'heart-desktop.png'),full_page=True)
@@ -131,8 +141,8 @@ with sync_playwright() as p:
  ok('numeric verification collapsed',not page.locator('.bs-verification').evaluate('(e)=>e.open'));page.locator('.bs-verification summary').click();ok('optional weight verification',float(stage.get_attribute('data-weight-error'))<1e-10 and page.get_by_label('递推权重与基函数对应',exact=True).is_visible());page.locator('.bs-verification summary').click()
  page.screenshot(path=str(out/'book-reference-desktop.png'),full_page=True);page.locator('#stage').screenshot(path=str(out/'book-control-polygon.png'));ladder.screenshot(path=str(out/'book-knot-intervals.png'))
  # WebGL2 gizmo in spatial editing mode.
- control('编辑维度').select_option('space');ok('space editing available',control('编辑维度').input_value()=='space');page.get_by_role('button',name='空间波形预设',exact=True).click();number('控制顶点坐标 Z',1.2);ok('spatial coordinate edit','1.200' in page.locator('#readout').inner_text())
- control('选中控制顶点').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();page.wait_for_timeout(150);rect=canvas.bounding_box()
+ control('2D/3D 曲线').select_option('space');ok('space editing available',control('2D/3D 曲线').input_value()=='space');page.get_by_role('button',name='载入 3D 波形曲线',exact=True).click();number('控制顶点坐标 Z',1.2);ok('spatial coordinate edit','1.200' in page.locator('#readout').inner_text())
+ control('选中控制顶点 𝐝ᵢ').select_option('1');canvas=page.locator('#stage > canvas:not(.bs-edge-overlay)');canvas.scroll_into_view_if_needed();page.wait_for_timeout(150);rect=canvas.bounding_box()
  point=[float(control('控制顶点坐标 '+axis).input_value()) for axis in 'XYZ'];eye=[7,5,10]
  def dot(a,b):return sum(x*y for x,y in zip(a,b))
  def unit(a):
