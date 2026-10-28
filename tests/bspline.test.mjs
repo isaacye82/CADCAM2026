@@ -74,3 +74,20 @@ test('三次内部节点的1/2/3重数具有正确的解析连续性',()=>{
     const q=4-r,left=splineDerivative(d,U,3,1,q,'left'),right=splineDerivative(d,U,3,1,q,'right');assert.ok(Math.hypot(...left.map((x,i)=>x-right[i]))>.01);
   }
 });
+
+test('de Boor 逐边传播的最终权重等于 Cox-de Boor，且每个割边比例与坐标一致',async()=>{
+  const {deBoorStep}=await import('../src/bspline.js');
+  for(const k of [1,2,3,4,5]){
+    const d=seededPoints(7,315).map(p=>p.p),sets=[uniformKnots(7,k),clampedKnots(7,k)];
+    if(k===3)sets.push(...heartKnots());
+    for(const U of sets){const [a,b]=domain(U,k);for(const u of [a,a+(b-a)*.23,a+(b-a)*.78,b]){
+      const result=deBoor(d,U,k,u),basis=basisValues(U,k,u);close(result.influences.at(-1)[0],basis.slice(result.span-k,result.span+1));
+      for(let index=0;index<k*(k+1)/2;index++){
+        const step=deBoorStep(result,U,k,index),alpha=(u-U[step.lo])/(U[step.hi]-U[step.lo]);assert.ok(alpha>=-1e-12&&alpha<=1+1e-12);assert.ok(Math.abs(alpha-step.alpha)<1e-12);
+        close(step.m,step.a.map((x,i)=>(1-alpha)*x+alpha*step.b[i]));
+        const distance=(x,y)=>Math.hypot(...x.map((v,i)=>v-y[i]));assert.ok(Math.abs(distance(step.a,step.m)-alpha*distance(step.a,step.b))<1e-10);assert.ok(Math.abs(distance(step.m,step.b)-(1-alpha)*distance(step.a,step.b))<1e-10);
+        assert.ok(Math.abs(step.weights.reduce((x,y)=>x+y)-1)<1e-10);
+      }
+    }}
+  }
+});

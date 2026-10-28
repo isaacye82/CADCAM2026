@@ -34,15 +34,15 @@ export function basisLevels(U,k,u,side='right'){
 export function basisValues(U,k,u,side='auto'){return basisLevels(U,k,u,side==='auto'?(u===domain(U,k)[1]?'left':'right'):side).at(-1);}
 export function basisPoint(d,U,k,u,side='auto'){const weights=basisValues(U,k,u,side);return [0,1,2].map(axis=>d.reduce((s,p,i)=>s+weights[i]*p[axis],0));}
 export function deBoor(d,U,k,u,side='auto'){
-  const span=findSpan(U,k,u,side),layers=[d.slice(span-k,span+1).map(p=>p.slice())],alphas=[[]];
+  const span=findSpan(U,k,u,side),layers=[d.slice(span-k,span+1).map(p=>p.slice())],alphas=[[]],influences=[Array.from({length:k+1},(_,i)=>Array.from({length:k+1},(_,j)=>+(i===j)))];
   for(let r=1;r<=k;r++){
     const prev=layers.at(-1),alpha=[];const layer=Array.from({length:k-r+1},(_,q)=>{
       const j=q+r,den=U[span+1+j-r]-U[span-k+j];
       // For a selected nonzero span these denominators are strictly positive, even at repeated knots.
       if(!(den>0))throw new RangeError('de Boor 递推区间退化');
       const a=(u-U[span-k+j])/den;alpha.push(a);return prev[q].map((x,h)=>(1-a)*x+a*prev[q+1][h]);
-    });layers.push(layer);alphas.push(alpha);
-  }return {point:layers.at(-1)[0],layers,alphas,span};
+    });const previous=influences.at(-1);influences.push(alpha.map((a,q)=>previous[q].map((w,j)=>(1-a)*w+a*previous[q+1][j])));layers.push(layer);alphas.push(alpha);
+  }return {point:layers.at(-1)[0],layers,alphas,span,influences};
 }
 // Analytic one-sided derivatives at knots from differentiated Cox–de Boor identities.
 export function splineDerivative(d,U,k,u,order=1,side='auto'){
@@ -58,3 +58,12 @@ export function splineDerivative(d,U,k,u,order=1,side='auto'){
   return [0,1,2].map(axis=>d.reduce((s,p,i)=>s+previous[k][i]*p[axis],0));
 }
 export function sampledSpans(d,U,k,samples=64){return knotSpans(U,k).map(span=>({...span,points:Array.from({length:samples+1},(_,i)=>deBoor(d,U,k,(i===samples?span.b:span.a+(span.b-span.a)*i/samples),i===samples?'left':'right').point)}));}
+
+// A single interpolation joins two parents; its influence weights propagate along the same edges.
+export function deBoorStep(result,U,k,index){
+  let offset=0;
+  for(let r=1;r<=k;r++)for(let q=0;q<=k-r;q++){
+    if(offset++===index){const i=result.span-k+r+q;return {r,q,i,alpha:result.alphas[r][q],a:result.layers[r-1][q],b:result.layers[r-1][q+1],m:result.layers[r][q],lo:i,hi:i+k-r+1,weights:result.influences[r][q]};}
+  }
+  throw new RangeError('递推步骤超出范围');
+}

@@ -6,7 +6,8 @@ from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from functools import partial
 from threading import Thread
 from pathlib import Path
-import os,json,math,hashlib
+import os,json,math,hashlib,io
+from PIL import Image
 root=Path(__file__).resolve().parents[2]
 os.chdir(root)
 out=root/'work/12-bspline'
@@ -42,11 +43,19 @@ with sync_playwright() as p:
  page.locator('a[href="courses/12.bspline.html"]').click();page.wait_for_function('document.body.dataset.ready==="true"');page.get_by_role('button',name='暂停',exact=True).click()
  stage=page.locator('#stage')
  def control(name):return page.get_by_label(name,exact=True)
- def mode(value):control('展示内容').select_option(str(value))
+ def mode(value):page.locator('.bs-mode-tabs button').nth(int(value)-1).click()
  def slide(name,value):control(name).evaluate('(e,v)=>{e.value=v;e.dispatchEvent(new Event("input",{bubbles:true}))}',str(value))
- def number(name,value):control(name).fill(str(value));control(name).dispatch_event('input')
+ def number(name,value):
+  target=control(name);target.evaluate('(e)=>{const d=e.closest("details.bs-node-details");if(d)d.open=true}');target.fill(str(value));target.dispatch_event('input')
  def segments():return stage.get_attribute('data-segments')
  ok('WebGL2',page.locator('#stage canvas').evaluate('(c)=>!!c.getContext("webgl2")'))
+ ok('new five exhibition titles',page.locator('.bs-mode-tabs button').count()==5 and '均匀 B 样条基函数' in page.locator('.bs-mode-tabs button').nth(1).inner_text() and '非均匀' in page.locator('.bs-mode-tabs button').nth(2).inner_text())
+ ok('default double curve width',stage.get_attribute('data-curve-width')=='2')
+ for name in ['显示控制顶点','显示控制多边形','显示 XYZ 坐标系']:control(name).uncheck()
+ def colored_pixels():
+  image=Image.open(io.BytesIO(page.locator('#stage canvas').screenshot())).convert('RGB');return sum(1 for index,pixel in enumerate(image.get_flattened_data()) if index>=image.width*110 and max(abs(pixel[i]-[11,20,33][i]) for i in range(3))>35)
+ slide('曲线线宽（px）',1);thin=colored_pixels();slide('曲线线宽（px）',4);thick=colored_pixels();results['line width pixel counts']={'1px':thin,'4px':thick};ok('WebGL line width changes actual pixels',thick>thin+200);slide('曲线线宽（px）',2)
+ for name in ['显示控制顶点','显示控制多边形','显示 XYZ 坐标系']:control(name).check()
  for k in [1,2,3,4,5]:
   control('曲线次数 k').select_option(str(k));ok('degree '+str(k),segments()==str(7-k))
  control('曲线次数 k').select_option('3');page.get_by_role('button',name='增加控制顶点',exact=True).click();ok('append one segment',segments()=='5' and stage.get_attribute('data-count')=='8')
@@ -60,27 +69,32 @@ with sync_playwright() as p:
  page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+25,y-20,steps=8);page.mouse.up();ok('planar pointer drag',abs(float(control('控制顶点坐标 X').input_value())-point[0])>.1)
  before=page.locator('#readout').inner_text();number('控制顶点坐标 Y',2.5);ok('coordinate input updates curve',before!=page.locator('#readout').inner_text())
  mode(2);slide('全局参数 u',2.25);ok('global domain and segment mapping','第 3 段局部 u=0.250' in page.locator('#readout').inner_text())
- mode(3);control('显示基函数次数').select_option('0');control('选中基函数').select_option('2');ok('zero-degree basis and support',control('显示基函数次数').input_value()=='0' and '显示 0 次' in page.locator('#extras').inner_text())
+ mode(2);control('显示基函数次数').select_option('0');control('选中基函数').select_option('2');ok('zero-degree basis and support',control('显示基函数次数').input_value()=='0' and '显示 0 次' in page.locator('#extras').inner_text())
  control('显示基函数次数').select_option('3');slide('全局参数 u',.65);page.screenshot(path=str(out/'basis.png'),full_page=True)
- mode(5);label='主曲线完整节点轴 u4';old=page.locator('#readout').inner_text();number(label,.7);ok('nonuniform node updates curve',control(label).input_value()=='0.7' and old!=page.locator('#readout').inner_text());ok('node preset reflects custom knots',control('主曲线节点预设').input_value()=='custom')
+ mode(3);ok('standalone nonuniform basis and curve',control('主曲线节点预设').is_visible() and control('主曲线节点预设').input_value()=='custom');ok('indexed basis legend',page.get_by_role('button',name='基函数 N_0,3',exact=True).is_visible());ok('indexed full knot vector',page.locator('.bs-node-vector').first.locator('span').count()==11 and 'U = [' in page.locator('#extras').inner_text());label='主曲线完整节点轴 u4';old=page.locator('#readout').inner_text();number(label,.7);ok('nonuniform node updates curve',control(label).input_value()=='0.7' and old!=page.locator('#readout').inner_text());ok('node preset reflects custom knots',control('主曲线节点预设').input_value()=='custom')
  old=page.locator('#readout').inner_text();number(label,-10);ok('invalid node rejected',control(label).get_attribute('aria-invalid')=='true' and old==page.locator('#readout').inner_text())
  number(label,.8);ok('valid node recovers',control(label).get_attribute('aria-invalid') is None)
  # Continuous axis dragging of u4 must preserve handlers across redraws.
- axis=page.get_by_label('主曲线完整节点轴',exact=True);axis.scroll_into_view_if_needed();control('拖动节点编号').select_option('4');rect=axis.bounding_box();x=rect['x']+28+(.8+3)/10*(rect['width']-50);y=rect['y']+50
+ axis=page.get_by_label('主曲线完整节点轴',exact=True);axis.scroll_into_view_if_needed();control('拖动节点编号').select_option('4');rect=axis.bounding_box();x=rect['x']+28+.8/4*(rect['width']-50);y=rect['y']+50
  page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+14,y,steps=6);page.mouse.up();ok('node-axis drag',abs(float(control(label).input_value())-.8)>.02)
+ control('拖动节点编号').select_option('4');beforeGap=control(label).input_value();slide('节点间距 Δu',.5);ok('node spacing slider updates knot',control(label).input_value()!=beforeGap);saved=control(label).input_value();mode(2);mode(3);ok('editable knots survive uniform exhibit',control(label).input_value()==saved)
  mode(4);ok('heart 4/4/2 spans',segments()=='4,4,2');ok('heart fixed degree 3',control('曲线次数 k').input_value()=='3' and control('曲线次数 k').is_disabled())
- right=page.locator('.bs-heart-panel').nth(2);input4=right.get_by_label('端点 4 重 · 内部 3 重节点轴 u4',exact=True);input4.fill('.8');input4.dispatch_event('input');ok('heart knot edit changes segment count',segments()=='4,4,3')
+ right=page.locator('.bs-heart-panel').nth(2);input4=right.get_by_label('端点 4 重 · 内部 3 重节点轴 u4',exact=True);right.locator('details.bs-node-details').evaluate('(e)=>e.open=true');input4.fill('.8');input4.dispatch_event('input');ok('heart knot edit changes segment count',segments()=='4,4,3')
  before=page.locator('#readout').inner_text();control('选中控制顶点').select_option('1');number('控制顶点坐标 X',-2.3);ok('heart shared control edit',before!=page.locator('#readout').inner_text())
  for index,name in [(0,'均匀 · 不插值端点'),(1,'端点 4 重 · 内部均匀')]:
-  panel=page.locator('.bs-heart-panel').nth(index);node=panel.get_by_label(name+'节点轴 u4',exact=True);beforeImage=hashlib.sha256(page.locator('#stage canvas').screenshot()).hexdigest();node.fill('.6');node.dispatch_event('input');page.wait_for_timeout(100);ok('heart column '+str(index)+' independent knot edit',node.get_attribute('aria-invalid') is None and beforeImage!=hashlib.sha256(page.locator('#stage canvas').screenshot()).hexdigest())
+  panel=page.locator('.bs-heart-panel').nth(index);node=panel.get_by_label(name+'节点轴 u4',exact=True);beforeImage=hashlib.sha256(page.locator('#stage canvas').screenshot()).hexdigest();panel.locator('details.bs-node-details').evaluate('(e)=>e.open=true');node.fill('.6');node.dispatch_event('input');page.wait_for_timeout(100);ok('heart column '+str(index)+' independent knot edit',node.get_attribute('aria-invalid') is None and beforeImage!=hashlib.sha256(page.locator('#stage canvas').screenshot()).hexdigest())
  page.get_by_role('button',name='恢复心形对照预设',exact=True).click();page.screenshot(path=str(out/'heart-desktop.png'),full_page=True)
- right.get_by_role('button',name='在展示 5 构造此曲线',exact=True).click();slide('全局参数 u',1.5);ok('heart de Casteljau comparison',page.locator('.bs-triangles').get_attribute('class').find('bs-comparing')>=0 and page.locator('.bs-triangles>div').nth(1).is_visible())
+ right.get_by_role('button',name='在展示3构造此曲线',exact=True).click();ok('heart transfers to exhibit 3',stage.get_attribute('data-bs-mode')=='3' and segments()=='2');mode(5);slide('全局参数 u',1.5);ok('heart de Casteljau comparison',page.locator('.bs-triangles').get_attribute('class').find('bs-comparing')>=0 and page.locator('.bs-triangles>div').nth(1).is_visible())
  # Move the repeated final endpoint, preserving multiplicity only when the final edit completes.
  for i in [10,9,8,7]:number('主曲线完整节点轴 u'+str(i),2.5)
- slide('全局参数 u',1.8);ok('Bezier comparison uses edited span interval','最大误差' in page.locator('.bs-extra').filter(has=page.locator('.bs-triangles')).inner_text() and 'NaN' not in page.locator('#readout').inner_text())
+ slide('全局参数 u',1.8);ok('Bezier comparison uses edited span interval','对应点误差' in page.locator('.bs-extra').filter(has=page.locator('.bs-triangles')).inner_text() and 'NaN' not in page.locator('#readout').inner_text())
  page.get_by_role('button',name='单段 Bézier 特例',exact=True).click();ok('single Bezier one span',segments()=='1' and stage.get_attribute('data-count')=='4');ok('node preset reflects clamped knots',control('主曲线节点预设').input_value()=='clamped')
- control('动画方式').select_option('steps');page.get_by_role('button',name='重置动画',exact=True).click();page.get_by_role('button',name='单步',exact=True).click();ok('de Boor single step',stage.get_attribute('data-reveal')=='1')
+ ok('recursion diagram above basis',page.locator('#extras').evaluate('(e)=>{const c=[...e.children];return c.indexOf(e.querySelector(".bs-triangles").closest("section"))<c.indexOf(e.querySelector(".bs-basis-legend").closest("section"))}'))
+ page.get_by_role('button',name='基函数 N_1,3',exact=True).click();ok('basis selection tracks recursion path',control('选中基函数').input_value()=='1' and float(stage.get_attribute('data-weight-error'))<1e-10)
+ slide('全局参数 u',.4);control('观察插值步骤').select_option('1');ok('interpolation-step selection',stage.get_attribute('data-active-step')=='1' and abs(float(stage.get_attribute('data-ratio-alpha'))-.4)<1e-9)
+ control('动画方式').select_option('steps');fixedU=control('全局参数 u').input_value();page.get_by_role('button',name='重置动画',exact=True).click();ok('fixed-parameter reset preserves u',control('全局参数 u').input_value()==fixedU);page.get_by_role('button',name='单步',exact=True).click();ok('de Boor single step',stage.get_attribute('data-reveal')=='1')
  page.get_by_role('button',name='播放',exact=True).click();page.wait_for_function('Number(document.querySelector("#stage").dataset.reveal)>=2');page.get_by_role('button',name='暂停',exact=True).click();ok('construction animation',int(stage.get_attribute('data-reveal'))>=2)
+ page.get_by_role('button',name='重置动画',exact=True).click();slide('全局参数 u',.4);oldU=control('全局参数 u').input_value();page.get_by_role('button',name='播放',exact=True).click();page.wait_for_function('Number(document.querySelector("#stage").dataset.ratioPhase)>.15 && Number(document.querySelector("#stage").dataset.ratioPhase)<.65');page.get_by_role('button',name='暂停',exact=True).click();moving=hashlib.sha256(page.get_by_label('节点比例与空间割边对应',exact=True).screenshot()).hexdigest();page.get_by_role('button',name='单步',exact=True).click();settled=hashlib.sha256(page.get_by_label('节点比例与空间割边对应',exact=True).screenshot()).hexdigest();ok('fixed-u proportional animation changes ratio marker',oldU==control('全局参数 u').input_value() and moving!=settled)
  control('动画方式').select_option('scan');slide('全局参数 u',.3);page.get_by_role('button',name='播放',exact=True).click();page.wait_for_timeout(300);allocations=page.evaluate('gpuAllocations');old=float(control('全局参数 u').input_value());page.wait_for_timeout(500);ok('scan moves parameter',float(control('全局参数 u').input_value())>old);ok('animation reuses GPU resources',allocations==page.evaluate('gpuAllocations'));page.get_by_role('button',name='暂停',exact=True).click()
  old=control('全局参数 u').input_value();page.wait_for_timeout(200);ok('pause freezes parameter',old==control('全局参数 u').input_value())
  for name in ['显示控制顶点','显示控制多边形','显示递推点与连线','显示 XYZ 坐标系']:control(name).uncheck()
@@ -103,7 +117,12 @@ with sync_playwright() as p:
   return [rect['x']+rect['width']/2*(1+f*dot(rightAxis,q)/(-z)/(rect['width']/rect['height'])),rect['y']+rect['height']/2*(1-f*dot(up,q)/(-z))]
  start=project([point[0],point[1]+gizmoScale*.52,point[2]]);end=project([point[0],point[1]+gizmoScale*.52+.6,point[2]])
  page.mouse.move(*start);page.wait_for_timeout(100);page.mouse.down();page.mouse.move(*end,steps=10);page.mouse.up();ok('spatial Y gizmo drag',abs(float(control('控制顶点坐标 Y').input_value())-point[1])>.1)
- page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(150);ok('mobile controls collapsed',not page.locator('#control-disclosure').evaluate('(e)=>e.open'));page.locator('.console-summary').click();mode(4);page.wait_for_timeout(150);ok('mobile heart vertical layout',stage.evaluate('(e)=>e.clientHeight')==900);ok('mobile no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'));page.screenshot(path=str(out/'heart-mobile.png'),full_page=True)
+ page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(150);ok('mobile console closed',not page.locator('.bs-control-drawer').evaluate('(e)=>e.open'));mode(3);page.get_by_role('button',name='打开参数面板',exact=True).click();page.wait_for_timeout(150)
+ drawer=page.locator('.bs-control-drawer');ok('mobile parameter panel opens',drawer.evaluate('(e)=>e.open'))
+ canvasRect=page.locator('#stage canvas').bounding_box();panelRect=drawer.bounding_box();ok('mobile panel does not cover curve',canvasRect['y']+canvasRect['height']<=panelRect['y']+2)
+ slide('全局参数 u',.6);ok('mobile panel edits parameter','u=0.600' in page.locator('#readout').inner_text());page.screenshot(path=str(out/'parameter-mobile.png'),full_page=True)
+ drawer.get_by_role('button',name='收起',exact=True).click();ok('mobile panel closes',not drawer.evaluate('(e)=>e.open'))
+ mode(4);page.wait_for_timeout(150);ok('mobile heart vertical layout',stage.evaluate('(e)=>e.clientHeight')==900);ok('mobile no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'));page.screenshot(path=str(out/'heart-mobile.png'),full_page=True)
  ok('no JS or WebGL errors',not errors)
  results['errors']=errors;results['renderer']='Chromium WebGL2 / SwiftShader';browser.close()
 server.shutdown();(out/'acceptance.json').write_text(json.dumps(results,ensure_ascii=False,indent=2))
