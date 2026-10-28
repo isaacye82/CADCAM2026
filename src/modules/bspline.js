@@ -5,7 +5,7 @@ import {TransformControls} from 'three/addons/controls/TransformControls.js';
 import {THREE,makeView,el,block,button,select,range,check,vectorInput,animate,fmt,vec} from '../ui.js';
 import {uniformKnots,clampedKnots,splineError,domain,knotSpans,findSpan,basisValues,deBoor,splineDerivative,heartPoints,heartKnots,sampledSpans,deBoorStep,deBoorTeachingExample} from '../bspline.js';
 import {casteljau} from '../math.js';
-import {graphCanvas,drawBasis,drawKnotAxis,splineColor,drawNodeLadder,drawProjectedConstruction,constructionColor,drawInfluences} from './bspline-plots.js';
+import {graphCanvas,drawBasis,drawKnotAxis,splineColor,drawNodeLadder,drawProjectedConstruction,drawControlLabels,constructionColor,drawInfluences} from './bspline-plots.js';
 
 const MAX=24,SAMPLES=64;
 const seed=()=>Array.from({length:7},(_,i)=>[-3+i,1.8*Math.sin(i*1.35),0]);
@@ -16,25 +16,25 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const view=makeView(stage,{position:[0,0,13],grid:false,axes:false});view.controls.enableRotate=false;
   let mode='1',k=3,d=seed(),U=uniformKnots(7,3),u=.6,selected=0,activeSegment=0,local=Array(4).fill(.5),is3D=false;
   let playing=true,speed=1,animationMode='scan',reveal=0,showPoints=true,showPolygon=true,showConstruction=true,level=3,basisSelected=-1;
-  let curveWidth=2,activeStep=0,editableKnots=null;const wideLines=[];
+  let curveWidth=3,activeStep=0,editableKnots=null;const curveLines=[];
   const editableDefaults=(count,p)=>{const knots=clampedKnots(count,p),end=count-p;return knots.map(x=>x>0?x*x/end:x);};
   const defaultKnots=()=>['1','2'].includes(mode)?uniformKnots(d.length,k):editableDefaults(d.length,k);
   let heartD=heartPoints(),heartU=heartKnots(),heartIndex=0,heartProgress=.4;
   const main=new THREE.Group(),hearts=Array.from({length:3},()=>new THREE.Group());view.scene.add(main,...hearts);
-  const sphere=new THREE.SphereGeometry(.07,12,8),materials=Array.from({length:8},(_,i)=>new THREE.MeshBasicMaterial({color:splineColor(i)}));
+  const sphere=new THREE.SphereGeometry(.055,12,8),materials=Array.from({length:8},(_,i)=>new THREE.MeshBasicMaterial({color:splineColor(i)}));
   const white=new THREE.MeshBasicMaterial({color:0xffffff}),muted=new THREE.MeshBasicMaterial({color:0x627d99}),pink=new THREE.MeshBasicMaterial({color:0xf58ca9});
   function dot(parent,mat=white,size=1){const m=new THREE.Mesh(sphere,mat);m.scale.setScalar(size);parent.add(m);return m;}
-  function line(parent,count,color){
+  function line(parent,count,color,isCurve=false){
     const geometry=new LineGeometry();geometry.setPositions(new Float32Array(count*3));geometry.instanceCount=0;
-    const material=new LineMaterial({color,linewidth:curveWidth,worldUnits:false});
-    const object=new Line2(geometry,material);object.frustumCulled=false;wideLines.push(object);parent.add(object);return object;
+    const material=new LineMaterial({color,linewidth:isCurve?curveWidth:1.5,worldUnits:false});
+    const object=new Line2(geometry,material);object.frustumCulled=false;if(isCurve)curveLines.push(object);parent.add(object);return object;
   }
   function write(l,points){
     const data=l.geometry.attributes.instanceStart.data,a=data.array;
     for(let i=0;i<points.length-1;i++){a.set(points[i],i*6);a.set(points[i+1],i*6+3);}
     l.geometry.instanceCount=Math.max(0,points.length-1);data.needsUpdate=true;
   }
-  function drawing(parent,count){return{parent,curves:Array.from({length:MAX},(_,i)=>line(parent,SAMPLES+1,splineColor(i))),handles:Array.from({length:count},()=>dot(parent,muted,1.2)),polygon:line(parent,MAX,0x607a99),current:dot(parent,pink,1.8)};}
+  function drawing(parent,count){return{parent,curves:Array.from({length:MAX},(_,i)=>line(parent,SAMPLES+1,splineColor(i),true)),handles:Array.from({length:count},()=>dot(parent,muted,1.2)),polygon:line(parent,MAX,0x607a99),current:dot(parent,pink,1.8)};}
   const drawingMain=drawing(main,MAX),heartDraw=hearts.map(g=>drawing(g,7));
   const segmentDots=Array.from({length:MAX},(_,i)=>dot(main,materials[i%8],1.4));
   const construction=new THREE.Group();main.add(construction);
@@ -44,7 +44,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   const recursionDots=Array.from({length:6},(_,r)=>Array.from({length:6-r},()=>dot(construction,recursionMaterials[r],.95)));
   const castLines=Array.from({length:6},()=>line(construction,6,0xffffff));castLines.forEach(l=>l.material.transparent=true);castLines.forEach(l=>l.material.opacity=.5);
   const cutGroup=new THREE.Group();construction.add(cutGroup);const cutAM=line(cutGroup,2,0x568fff),cutMarker=dot(cutGroup,new THREE.MeshBasicMaterial({color:0x568fff}),1.4);
-  const edgeOverlay=graphCanvas(stage,'控制多边形与节点割比',540);edgeOverlay.classList.add('bs-edge-overlay');edgeOverlay.hidden=true;let constructionModel=null,ladderRows=[];
+  const edgeOverlay=graphCanvas(stage,'控制多边形与节点割比',540);edgeOverlay.classList.add('bs-edge-overlay');edgeOverlay.hidden=false;let constructionModel=null,ladderRows=[];
   const heartCamera=new THREE.OrthographicCamera(-4,4,4,-4,.05,100);heartCamera.position.set(0,0,15);
   const gizmo=new TransformControls(view.camera,view.renderer.domElement);gizmo.setSize(.7);view.scene.add(gizmo.getHelper());
   const overlay=el('div',{class:'overlay bs-status'},stage),heartLabels=el('div',{class:'bs-heart-labels',hidden:''},stage);
@@ -259,7 +259,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     if(imported)editableKnots={knots:U.slice(),count:d.length,degree:k};
     if(value==='5')level=k;
     view.controls.enabled=value!=='4';dimension.value=value==='4'?'plane':is3D?'space':'plane';
-    modeTabs.forEach((tab,i)=>tab.classList.toggle('active',String(i+1)===value));edgeOverlay.hidden=value!=='5';if(value==='5'){side.insertBefore(panels.boor,panels.nodes);side.insertBefore(animation,panels.nodes);}else{side.insertBefore(panels.nodes,animation);side.insertBefore(panels.boor,degree.parentElement);}rebuild();if(drawer.open)document.querySelector('#lab-demo').scrollIntoView({block:'start'});
+    modeTabs.forEach((tab,i)=>tab.classList.toggle('active',String(i+1)===value));edgeOverlay.hidden=false;if(value==='5'){side.insertBefore(panels.boor,panels.nodes);side.insertBefore(animation,panels.nodes);}else{side.insertBefore(panels.nodes,animation);side.insertBefore(panels.boor,degree.parentElement);}rebuild();if(drawer.open)document.querySelector('#lab-demo').scrollIntoView({block:'start'});
   }
   function sync(input,value){input.value=value;input.previousElementSibling.querySelector('output').textContent=fmt(value,3);}
   function renderRecursion(result){
@@ -280,7 +280,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
     });
     const edgePhase=Math.max(0,Math.min(1,(phase-.3)/.5)),colour=constructionColor(step.r,k);cutAM.material.color.set(colour);cutMarker.material.color.set(colour);
     write(cutAM,[step.a,step.b]);cutAM.material.opacity=.55;cutAM.material.transparent=true;cutMarker.position.set(...step.a.map((x,i)=>x+edgePhase*(step.m[i]-x)));cutGroup.visible=showConstruction&&phase>=.3;
-    constructionModel={result,U:U.slice(),k,u,active:activeStep,phase,visible,selected,show:showConstruction,showControls:showPoints};
+    constructionModel={result,U:U.slice(),k,u,active:activeStep,phase,visible,show:showConstruction};
     ladderRows=drawNodeLadder(ladderCanvas,result,U,k,u,{active:activeStep,phase,visible});
     const phaseIndex=phase<.3?0:phase<.8?1:2;[...phases.children].forEach((item,i)=>item.classList.toggle('active',i===phaseIndex));
     const superscript=['⁰','¹','²','³','⁴','⁵'];
@@ -294,7 +294,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   function update(){
     const comparisonMode=mode==='4';degree.disabled=comparisonMode;addButton.disabled=removeButton.disabled=comparisonMode;
     if(comparisonMode){
-      heartDraw.forEach((draw,i)=>{const [a,b]=domain(heartU[i],3),t=heartProgress===1?b:a+(b-a)*heartProgress;draw.current.position.set(...deBoor(heartD,heartU[i],3,t).point);draw.handles.forEach((p,j)=>p.material=j===selected?white:muted);drawBasis(heartPanels[i].plot,heartU[i],3,t,{width:curveWidth});drawKnotAxis(heartPanels[i].axis,heartU[i],3,t);const ss=knotSpans(heartU[i],3);heartPanels[i].summary.textContent=`${ss.length} 段 · 𝐫(${fmt(t)})=${vec(draw.current.position.toArray(),2)}`;});
+      heartDraw.forEach((draw,i)=>{const [a,b]=domain(heartU[i],3),t=heartProgress===1?b:a+(b-a)*heartProgress;draw.current.position.set(...deBoor(heartD,heartU[i],3,t).point);draw.handles.forEach((p,j)=>p.material=j===selected?white:muted);drawBasis(heartPanels[i].plot,heartU[i],3,t);drawKnotAxis(heartPanels[i].axis,heartU[i],3,t);const ss=knotSpans(heartU[i],3);heartPanels[i].summary.textContent=`${ss.length} 段 · 𝐫(${fmt(t)})=${vec(draw.current.position.toArray(),2)}`;});
       segmentDots.forEach(p=>p.visible=false);gizmo.detach();sync(heartSlider,heartProgress);overlay.textContent='心形对照 · 共享控制顶点 · 各图独立节点编辑';
       readout.textContent=`共享控制顶点：𝐝${selected}=${vec(heartD[selected])}`;
     }else{
@@ -307,10 +307,10 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
       segmentDots.forEach((p,i)=>{p.visible=mode==='1'&&i<ss.length;if(p.visible)p.position.set(...deBoor(d,U,k,ss[i].a+(ss[i].b-ss[i].a)*local[i],local[i]===1?'left':'right').point);});
       sync(uSlider,u);segmentSelect.value=activeSegment;drawKnotAxis(knotCanvas,U,k,u);
       if(['2','3','5'].includes(mode)){
-        drawBasis(basisCanvas,U,k,u,{level,selected:basisSelected,width:curveWidth});basisReadout.textContent=`Σ Nᵢ,ₖ = ${fmt(weights.reduce((a,b)=>a+b,0),3)} · 非零 ${weights.filter(x=>x>1e-10).length} 个 · 点击按钮高亮支撑区间`;
+        drawBasis(basisCanvas,U,k,u,{level,selected:basisSelected});basisReadout.textContent=`Σ Nᵢ,ₖ = ${fmt(weights.reduce((a,b)=>a+b,0),3)} · 非零 ${weights.filter(x=>x>1e-10).length} 个 · 点击按钮高亮支撑区间`;
       }
       if(['2','3','5'].includes(mode)){const values=basisValues(U,level,u,currentSide());[...basisLegend.children].forEach((entry,i)=>{entry.classList.toggle('active',i===basisSelected);entry.querySelector('small').textContent=fmt(values[i]);});}
-      if(mode==='5')renderRecursion(result);else{construction.visible=false;edgeOverlay.hidden=true;}
+      if(mode==='5')renderRecursion(result);else{construction.visible=false;edgeOverlay.hidden=false;}
       if(mode==='5')overlay.innerHTML=`<span style="color:#b9c5d5">● 原始顶点</span>　${Array.from({length:k},(_,i)=>`<span style="color:${constructionColor(i+1,k)}">● l=${i+1}${i+1===k?' / 𝐫(u)':''}</span>`).join('　')}`;
       else overlay.textContent=`k=${k} · ${d.length} 个控制顶点 · ${ss.length} 段`;
       readout.textContent=`u=${fmt(u)} ∈ [${a}, ${b}] · 第 ${actual+1} 段局部 u=${fmt((u-ss[actual].a)/(ss[actual].b-ss[actual].a))}\n𝐫(u)=${vec(result.point)}；选中 𝐝${selected}=${vec(d[selected])}`;
@@ -338,12 +338,23 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   for(const event of ['pointerup','pointercancel'])canvas.addEventListener(event,()=>{dragging=false;view.controls.enabled=mode!=='4';});
   function fitHeartCamera(w,h){const aspect=w/h,halfHeight=Math.max(3.8,3.5/aspect);heartCamera.left=-halfHeight*aspect;heartCamera.right=halfHeight*aspect;heartCamera.top=halfHeight;heartCamera.bottom=-halfHeight;heartCamera.updateProjectionMatrix();}
   view.renderWith((renderer,w,h)=>{
-    const axes=view.scene.getObjectByName('global-coordinate-system');const wasAxes=axes.visible;
+    const axes=view.scene.getObjectByName('global-coordinate-system');const wasAxes=axes.visible,labelGroups=[];
+    const project=(p,camera,rect=[0,0,w,h])=>{const v=new THREE.Vector3(...p).project(camera);return[rect[0]+(v.x+1)*rect[2]/2,rect[1]+(1-v.y)*rect[3]/2];};
+    edgeOverlay.style.height=h+'px';
     if(mode==='4'){
       main.visible=false;axes.visible=false;renderer.setScissorTest(true);const stacked=matchMedia('(max-width:740px)').matches;
-      for(let i=0;i<3;i++){hearts.forEach((g,j)=>g.visible=i===j);const rect=stacked?[0,h-(i+1)*h/3,w,h/3]:[i*w/3,0,w/3,h];fitHeartCamera(rect[2],rect[3]);renderer.setViewport(...rect);renderer.setScissor(...rect);renderer.render(view.scene,heartCamera);}
+      for(let i=0;i<3;i++){
+        hearts.forEach((g,j)=>g.visible=i===j);const rect=stacked?[0,h-(i+1)*h/3,w,h/3]:[i*w/3,0,w/3,h];fitHeartCamera(rect[2],rect[3]);renderer.setViewport(...rect);renderer.setScissor(...rect);renderer.render(view.scene,heartCamera);
+        const screenRect=[rect[0],h-rect[1]-rect[3],rect[2],rect[3]];
+        labelGroups.push({points:heartD.map(p=>project(p,heartCamera,screenRect)),rect:screenRect,selected});
+      }
       hearts.forEach(g=>g.visible=true);renderer.setScissorTest(false);axes.visible=wasAxes;
-    }else{main.visible=true;hearts.forEach(g=>g.visible=false);renderer.setScissorTest(false);renderer.setViewport(0,0,w,h);renderer.render(view.scene,view.camera);if(mode==='5'&&constructionModel){edgeOverlay.style.height=h+'px';view.camera.updateMatrixWorld();drawProjectedConstruction(edgeOverlay,constructionModel.result,constructionModel.U,constructionModel.k,constructionModel.u,p=>{const v=new THREE.Vector3(...p).project(view.camera);return[(v.x+1)*w/2,(1-v.y)*h/2];},constructionModel);}}
+    }else{
+      main.visible=true;hearts.forEach(g=>g.visible=false);renderer.setScissorTest(false);renderer.setViewport(0,0,w,h);renderer.render(view.scene,view.camera);view.camera.updateMatrixWorld();
+      labelGroups.push({points:d.map(p=>project(p,view.camera)),rect:[0,0,w,h],selected});
+    }
+    drawControlLabels(edgeOverlay,showPolygon?labelGroups:[]);
+    if(mode==='5'&&constructionModel)drawProjectedConstruction(edgeOverlay,constructionModel.result,constructionModel.U,constructionModel.k,constructionModel.u,p=>project(p,view.camera),constructionModel);
   });
   animate(dt=>{
     if(!playing||gizmo.dragging||dragging)return;
@@ -355,7 +366,7 @@ export function bsplineDemo({stage,side,readout,info,instructions}){
   });
   verification.addEventListener('toggle',()=>update());
   const appearance=block(side,'外观与图层');
-  range(appearance,'曲线线宽（px）',1,8,2,.5,value=>{curveWidth=value;wideLines.forEach(line=>line.material.linewidth=value);update();});
+  range(appearance,'曲线线宽（px）',1,8,3,.5,value=>{curveWidth=value;curveLines.forEach(line=>line.material.linewidth=value);update();});
   appearance.append(pointToggle.parentElement,polygonToggle.parentElement,constructionToggle.parentElement);
   const axesOptions=side.querySelector('.coordinate-options');
   const resetViewButton=[...side.children].find(node=>node.tagName==='BUTTON'&&node.textContent==='重置观察视角');

@@ -31,6 +31,7 @@ with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox','--enable-unsafe-swiftshader'])
  context=browser.new_context(viewport={'width':1440,'height':1000},device_scale_factor=1)
  context.add_init_script("""window.gpuAllocations={};for(const key of ['createBuffer','createTexture','createProgram']){const f=WebGL2RenderingContext.prototype[key];WebGL2RenderingContext.prototype[key]=function(...a){gpuAllocations[key]=(gpuAllocations[key]||0)+1;return f.apply(this,a)}}""")
+ context.add_init_script("""window.lineWidths=[];const locations=new WeakMap(),get=WebGL2RenderingContext.prototype.getUniformLocation,set=WebGL2RenderingContext.prototype.uniform1f;WebGL2RenderingContext.prototype.getUniformLocation=function(...args){const l=get.apply(this,args);if(l)locations.set(l,args[1]);return l};WebGL2RenderingContext.prototype.uniform1f=function(l,v){if(locations.get(l)==='linewidth'&&!lineWidths.includes(v))lineWidths.push(v);return set.call(this,l,v)}""")
  probe=context.new_page()
  try:
   probe.goto((root/'CADCAM2026_Show/courses/12.bspline.html').as_uri(),timeout=15000)
@@ -50,11 +51,11 @@ with sync_playwright() as p:
  def segments():return stage.get_attribute('data-segments')
  ok('WebGL2',page.locator('#stage > canvas:not(.bs-edge-overlay)').evaluate('(c)=>!!c.getContext("webgl2")'))
  ok('new five exhibition titles',page.locator('.bs-mode-tabs button').count()==5 and '均匀 B 样条基函数' in page.locator('.bs-mode-tabs button').nth(1).inner_text() and '非均匀' in page.locator('.bs-mode-tabs button').nth(2).inner_text())
- ok('default double curve width',stage.get_attribute('data-curve-width')=='2')
+ ok('default curve width 3px',stage.get_attribute('data-curve-width')=='3')
  for name in ['显示控制顶点','显示控制多边形','显示 XYZ 坐标系']:control(name).uncheck()
  def colored_pixels():
   image=Image.open(io.BytesIO(page.locator('#stage > canvas:not(.bs-edge-overlay)').screenshot())).convert('RGB');return sum(1 for index,pixel in enumerate(image.get_flattened_data()) if index>=image.width*110 and max(abs(pixel[i]-[11,20,33][i]) for i in range(3))>35)
- slide('曲线线宽（px）',1);thin=colored_pixels();slide('曲线线宽（px）',4);thick=colored_pixels();results['line width pixel counts']={'1px':thin,'4px':thick};ok('WebGL line width changes actual pixels',thick>thin+200);slide('曲线线宽（px）',2)
+ slide('曲线线宽（px）',1);thin=colored_pixels();slide('曲线线宽（px）',4);thick=colored_pixels();results['line width pixel counts']={'1px':thin,'4px':thick};ok('WebGL line width changes actual pixels',thick>thin+200);slide('曲线线宽（px）',3)
  for name in ['显示控制顶点','显示控制多边形','显示 XYZ 坐标系']:control(name).check()
  for k in [1,2,3,4,5]:
   control('曲线次数 k').select_option(str(k));ok('degree '+str(k),segments()==str(7-k))
@@ -71,6 +72,21 @@ with sync_playwright() as p:
  mode(2);slide('全局参数 u',2.25);ok('global domain and segment mapping','第 3 段局部 u=0.250' in page.locator('#readout').inner_text())
  mode(2);control('显示基函数次数').select_option('0');page.get_by_role('button',name='基函数 N_2,0',exact=True).click();ok('zero-degree basis and support',control('显示基函数次数').input_value()=='0' and page.get_by_role('button',name='基函数 N_2,0',exact=True).is_visible())
  control('显示基函数次数').select_option('3');slide('全局参数 u',.65);page.screenshot(path=str(out/'basis.png'),full_page=True)
+ # Width affects the spatial curve only; basis pixels remain identical.
+ basis=page.get_by_label('B样条基函数完整节点区间',exact=True)
+ before=hashlib.sha256(basis.screenshot()).hexdigest();slide('曲线线宽（px）',7)
+ ok('basis width unaffected by curve slider',before==hashlib.sha256(basis.screenshot()).hexdigest());slide('曲线线宽（px）',3)
+ ok('GPU curve widths independent of fixed 1.5px polygons',page.evaluate('lineWidths.includes(1.5)&&lineWidths.includes(3)&&lineWidths.includes(7)'))
+ for exhibit in range(1,6):
+  mode(exhibit);control('显示控制多边形').check();page.wait_for_timeout(80)
+  labels=page.locator('.bs-edge-overlay')
+  ok('control labels visible '+str(exhibit),int(labels.get_attribute('data-control-label-count'))==(21 if exhibit==4 else 7))
+  control('显示控制多边形').uncheck();page.wait_for_timeout(80)
+  ok('control labels follow polygon toggle '+str(exhibit),labels.get_attribute('data-control-label-count')=='0')
+  control('显示控制多边形').check()
+ control('显示控制顶点').uncheck();page.wait_for_timeout(80)
+ ok('labels independent of point markers',int(labels.get_attribute('data-control-label-count'))==7)
+ control('显示控制顶点').check()
  mode(3);ok('standalone nonuniform basis and curve',control('主曲线节点预设').is_visible() and control('主曲线节点预设').input_value()=='custom');ok('indexed basis legend',page.get_by_role('button',name='基函数 N_0,3',exact=True).is_visible());ok('indexed full knot vector','U = [' in page.locator('#extras').inner_text() and 'u₀ … uₙ₊ₖ₊₁' not in page.locator('#extras').inner_text());label='主曲线完整节点轴 u4';old=page.locator('#readout').inner_text();number(label,.7);ok('nonuniform node updates curve',control(label).input_value()=='0.7' and old!=page.locator('#readout').inner_text());ok('node preset reflects custom knots',control('主曲线节点预设').input_value()=='custom')
  old=page.locator('#readout').inner_text();number(label,-10);ok('invalid node rejected',control(label).get_attribute('aria-invalid')=='true' and old==page.locator('#readout').inner_text())
  number(label,.8);ok('valid node recovers',control(label).get_attribute('aria-invalid') is None)

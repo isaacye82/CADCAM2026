@@ -3,10 +3,10 @@
   "homepage 12 cards": "PASS",
   "WebGL2": "PASS",
   "new five exhibition titles": "PASS",
-  "default double curve width": "PASS",
+  "default curve width 3px": "PASS",
   "line width pixel counts": {
-    "1px": 1563,
-    "4px": 2468
+    "1px": 1436,
+    "4px": 2369
   },
   "WebGL line width changes actual pixels": "PASS",
   "degree 1": "PASS",
@@ -23,6 +23,19 @@
   "coordinate input updates curve": "PASS",
   "global domain and segment mapping": "PASS",
   "zero-degree basis and support": "PASS",
+  "basis width unaffected by curve slider": "PASS",
+  "GPU curve widths independent of fixed 1.5px polygons": "PASS",
+  "control labels visible 1": "PASS",
+  "control labels follow polygon toggle 1": "PASS",
+  "control labels visible 2": "PASS",
+  "control labels follow polygon toggle 2": "PASS",
+  "control labels visible 3": "PASS",
+  "control labels follow polygon toggle 3": "PASS",
+  "control labels visible 4": "PASS",
+  "control labels follow polygon toggle 4": "PASS",
+  "control labels visible 5": "PASS",
+  "control labels follow polygon toggle 5": "PASS",
+  "labels independent of point markers": "PASS",
   "standalone nonuniform basis and curve": "PASS",
   "indexed basis legend": "PASS",
   "indexed full knot vector": "PASS",
@@ -68,9 +81,9 @@
   "reference ladder 3+2+1 intervals": "PASS",
   "interval row selects matching polygon edge": "PASS",
   "construction layer pixels": {
-    "blue": 360,
-    "green": 565,
-    "red": 566
+    "blue": 244,
+    "green": 468,
+    "red": 703
   },
   "reference spatial layers blue green red": "PASS",
   "numeric verification collapsed": "PASS",

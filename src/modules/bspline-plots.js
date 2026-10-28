@@ -2,8 +2,8 @@ import {basisLevels,domain,knotSpans,deBoorStep} from '../bspline.js';
 const colors=['#57dfcf','#6b9dff','#f7bc69','#f58ca9','#c89eff','#e0dd70','#64c9f5','#efaa8c'];
 export const splineColor=i=>colors[((i%colors.length)+colors.length)%colors.length];
 export function graphCanvas(parent,label,height=230){const c=document.createElement('canvas');c.className='bs-graph';c.setAttribute('aria-label',label);c.style.height=height+'px';parent.append(c);return c;}
-function setup(canvas,transparent=false){const w=Math.max(180,canvas.clientWidth),h=parseFloat(canvas.style.height),ratio=Math.min(devicePixelRatio,2);if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,w,h);if(!transparent){ctx.fillStyle='#0b1421';ctx.fillRect(0,0,w,h);}ctx.font='12px sans-serif';return{ctx,w,h};}
-export function drawBasis(canvas,U,k,u,{level=k,selected=-1,width=2}={}){
+function setup(canvas,transparent=false,clear=true){const w=Math.max(180,canvas.clientWidth),h=parseFloat(canvas.style.height),ratio=Math.min(devicePixelRatio,2);if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);if(clear)ctx.clearRect(0,0,w,h);if(!transparent){ctx.fillStyle='#0b1421';ctx.fillRect(0,0,w,h);}ctx.font='12px sans-serif';return{ctx,w,h};}
+export function drawBasis(canvas,U,k,u,{level=k,selected=-1}={}){
   const {ctx,w,h}=setup(canvas),left=35,right=w-15,top=28,bottom=h-38,min=U[0],max=U.at(-1),[a,b]=domain(U,k),X=t=>left+(t-min)/(max-min)*(right-left),Y=v=>bottom-v*(bottom-top);
   ctx.fillStyle='#57dfcf15';ctx.fillRect(X(a),top,X(b)-X(a),bottom-top);
   ctx.strokeStyle='#3b536e';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(left,bottom);ctx.lineTo(right,bottom);ctx.stroke();
@@ -11,7 +11,7 @@ export function drawBasis(canvas,U,k,u,{level=k,selected=-1,width=2}={}){
   const unique=[...new Set(U)];unique.forEach(t=>{ctx.strokeStyle='#2b4056';ctx.beginPath();ctx.moveTo(X(t),top);ctx.lineTo(X(t),bottom+4);ctx.stroke();ctx.fillStyle='#9eb3cb';ctx.save();ctx.translate(X(t),bottom+17);ctx.rotate(-.3);ctx.fillText(Number(t.toFixed(2)),0,0);ctx.restore();});
   const count=U.length-level-1;
   for(let i=0;i<count;i++){
-    ctx.strokeStyle=splineColor(i);ctx.globalAlpha=selected<0||i===selected?1:.22;ctx.lineWidth=(i===selected?3:1.6)*width;
+    ctx.strokeStyle=splineColor(i);ctx.globalAlpha=selected<0||i===selected?1:.22;ctx.lineWidth=i===selected?6:3.2;
     for(let span=0;span<U.length-1;span++)if(U[span]<U[span+1]){
       ctx.beginPath();for(let j=0;j<=24;j++){const t=U[span]+(U[span+1]-U[span])*j/24,v=basisLevels(U,level,t,j===24?'left':'right')[level][i];j?ctx.lineTo(X(t),Y(v)):ctx.moveTo(X(t),Y(v));}ctx.stroke();
     }
@@ -68,10 +68,28 @@ export function drawNodeLadder(canvas,result,U,k,u,{active=0,phase=1,visible=Inf
   }
   canvas.dataset.intervalRows=rows.length;canvas.dataset.layers=k;return rows;
 }
-export function drawProjectedConstruction(canvas,result,U,k,u,project,{active=0,phase=1,visible=Infinity,selected=-1,show=true,showControls=true}={}){
-  const {ctx,w,h}=setup(canvas,true);if(!show)return;
+// Project labels every frame so they follow dragging, orbiting and each heart viewport.
+export function drawControlLabels(canvas,groups){
+  const {ctx}=setup(canvas,true);let count=0;
+  const subscript=i=>String(i).replace(/\d/g,x=>'₀₁₂₃₄₅₆₇₈₉'[+x]);
+  for(const {points,rect,selected} of groups){
+    const [left,top,w,h]=rect;ctx.save();ctx.beginPath();ctx.rect(left,top,w,h);ctx.clip();ctx.font='13px sans-serif';
+    const labels=[];
+    points.forEach((p,i)=>{
+      if(!p.every(Number.isFinite)||p[0]<left||p[0]>left+w||p[1]<top||p[1]>top+h)return;
+      const existing=labels.find(item=>Math.hypot(item.p[0]-p[0],item.p[1]-p[1])<3);
+      if(existing)existing.indices.push(i);else labels.push({p,indices:[i]});count++;
+    });
+    for(const {p,indices} of labels){
+      const text=indices.map(i=>`𝐝${subscript(i)}`).join(' / '),width=ctx.measureText(text).width,x=Math.max(left+3,Math.min(left+w-width-3,p[0]+9)),y=Math.max(top+14,Math.min(top+h-5,p[1]-9));
+      ctx.fillStyle='#0b1421d9';ctx.fillRect(x-2,y-12,width+4,16);ctx.fillStyle=indices.includes(selected)?'#f5d47d':'#c5d5e8';ctx.fillText(text,x,y);
+    }ctx.restore();
+  }
+  canvas.dataset.controlLabelCount=count;
+}
+export function drawProjectedConstruction(canvas,result,U,k,u,project,{active=0,phase=1,visible=Infinity,show=true}={}){
+  const {ctx,w,h}=setup(canvas,true,false);if(!show)return;
   const label=(text,p,colour='#d1dfef',dx=9,dy=-10)=>{ctx.font='13px sans-serif';const width=ctx.measureText(text).width,x=Math.max(5,Math.min(w-width-5,p[0]+dx)),y=Math.max(14,Math.min(h-8,p[1]+dy));ctx.fillStyle='#0b1421de';ctx.fillRect(x-2,y-12,width+4,16);ctx.fillStyle=colour;ctx.fillText(text,x,y);};
-  if(showControls)result.layers[0].forEach((p,j)=>{const i=result.span-k+j,screen=project(p);label(`𝐝${i}`,screen,constructionColor(0,k));if(i===selected){ctx.strokeStyle='#f5d47d';ctx.lineWidth=2;ctx.beginPath();ctx.arc(screen[0],screen[1],8,0,Math.PI*2);ctx.stroke();}});
   const step=deBoorStep(result,U,k,active),a=project(step.a),b=project(step.b),m=project(step.m),vx=b[0]-a[0],vy=b[1]-a[1],length=Math.hypot(vx,vy),colour=constructionColor(step.r,k);
   if(length<3){label('父点重合：节点比例仍有效',m,colour,12,22);return;}
   let normal=[-vy/length,vx/length];const parents=result.layers[step.r-1].map(project),centre=parents.reduce((sum,p)=>[sum[0]+p[0]/parents.length,sum[1]+p[1]/parents.length],[0,0]);
