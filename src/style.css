@@ -88,3 +88,43 @@
 }
 
 .mobile-hint{display:none}@media(max-width:740px){.desktop-hint{display:none}.mobile-hint{display:inline}}
+
+/* Lesson 12: diagrams, node editors, and three synchronized heart viewports. */
+body[data-page="12.bspline"] [hidden]{display:none!important}
+.bs-extra{padding:16px;border-top:1px solid var(--line);min-width:0}
+.bs-extra h3{color:#c4d6ea;margin-bottom:12px;line-height:1.65}
+.bs-extra p{font-size:14px;color:#b8cbe1;line-height:1.8}
+.bs-graph{display:block;width:100%;max-width:100%;touch-action:none;border:1px solid #273c53;border-radius:5px}
+.bs-values{font:12px/1.9 Consolas,'Microsoft YaHei',sans-serif;white-space:pre-line;overflow-wrap:anywhere;margin:10px 0}
+.bs-knot-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.bs-knot-inputs label{font-size:12px;min-width:0;color:#a6bdd6}
+.bs-knot-inputs input{width:100%;min-width:0;display:block}
+.bs-knot-inputs input[aria-invalid="true"]{border-color:#f58ca9;background:#442a37}
+.bs-feedback{font-size:13px;line-height:1.8;color:#f7bc69;overflow-wrap:anywhere}
+.bs-heart-labels{position:absolute;inset:8px 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));pointer-events:none}
+.bs-heart-labels span{font-size:11px;line-height:1.8;color:#c3d5e9;padding:5px 8px;background:#0b1421c9;border-right:1px solid #344b65}
+.stage[data-bs-mode="4"]{height:350px}
+.stage[data-bs-mode="4"] .bs-status{display:none}
+.bs-heart-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.bs-heart-panel{min-width:0;padding:8px;border:1px solid var(--line);border-radius:6px}
+.bs-heart-panel h3{font-size:13px}
+.bs-heart-panel .bs-knot-inputs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bs-triangles{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;overflow-x:auto}
+.bs-triangles.bs-comparing{grid-template-columns:repeat(2,minmax(0,1fr))}
+.bs-recursion-row{display:flex;gap:5px;margin:8px 0;align-items:flex-start;flex-wrap:wrap}
+.bs-recursion-row strong{font-size:12px;color:#a6bbd5;width:100%}
+.bs-recursion-cell{display:block;border-left:3px solid #57dfcf;background:#132235;padding:7px;font:11px/1.8 Consolas,sans-serif;overflow-wrap:anywhere;max-width:100%}
+.bs-continuity summary{font-size:13px;line-height:1.8;cursor:pointer;color:#b9d0e8;padding:6px 0}
+@media(max-width:740px){
+  .stage[data-bs-mode="4"]{height:900px}
+  .bs-heart-labels{inset:0;display:block;height:100%}
+  .bs-heart-labels span{position:absolute;top:8px;left:8px;font-size:12px;border:0}
+  .bs-heart-labels span:nth-child(2){top:calc(33.333% + 8px)}
+  .bs-heart-labels span:nth-child(3){top:calc(66.666% + 8px)}
+  .bs-heart-columns,.bs-triangles.bs-comparing{grid-template-columns:minmax(0,1fr)}
+  .bs-heart-panel .bs-knot-inputs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .bs-knot-inputs input{font-size:16px;min-height:40px}
+  .bs-extra{padding:12px}
+  .bs-extra p,.bs-values{font-size:13px}
+  .bs-heart-panel button{min-height:44px}
+}

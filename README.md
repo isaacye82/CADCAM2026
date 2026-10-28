@@ -1,6 +1,6 @@
 # CAD/CAM 课程交互实验室
 
-11 个课程作业、11 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
+12 个课程作业、12 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
 
 ```text
 src/ + scripts/build.mjs
@@ -52,7 +52,7 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 - `src/math.js`、`src/modules/`：数学算法与交互。
 - `src/prompts.json`：提示词源码档案，不发布。
 - `scripts/build.mjs`：唯一网页生成入口。
-- `scripts/validate-site.mjs`：14 个发布文件、链接、锚点与资源引用校验。
+- `scripts/validate-site.mjs`：15 个发布文件、链接、锚点与资源引用校验。
 - `scripts/package.mjs`：ZIP 打包与解压校验，由 release 调用。
 - `tests/`：数学、交付结构和发布校验测试。
 
@@ -92,3 +92,11 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 构建仍仅更新 `CADCAM2026_Show/`，不更新 ZIP。现有 Pages 工作流在 main 更新后直接发布此目录；本功能需经 PR 审核后合并。Netlify 流程保持不变。
 
 作业 11 的完整验收与限制见 [Bézier 曲面验收记录](docs/validation/BEZIER_SURFACE.md)。本云环境已通过 WebGL2 与断网后交互测试，但浏览器管理策略禁止 `file://` 导航，直接双击离线打开仍需人工确认。
+
+## 作业 12 B 样条曲线
+
+入口为 `courses/12.bspline.html`。使用 `𝐫(u)`、控制顶点 `𝐝ᵢ`、次数 `k` 和节点 `uᵢ`。五项展示包括：1–5 次均匀曲线的独立分段参数与解析连续性、统一全局参数域、0–k 次基函数递推、心形三图节点编辑，以及 de Boor 与 de Casteljau 对照。心形三组初始节点对应 4/4/2 段，共享 7 个控制顶点；每组节点可独立编辑，内部重复节点和零长度区间按实际情况处理。
+
+`src/bspline.js` 提供独立数学算法；`src/modules/bspline.js` 和 `bspline-plots.js` 实现 Three.js 场景、节点轴及基函数图。主曲线支持最多 24 个控制顶点、平面拖动、空间三轴及坐标输入。节点编辑保留非递减约束，无效输入标红且不应用。普通展示与心形对照分别保留状态，进入特例时明确替换状态。
+
+验收与已知限制见 [作业 12 验收记录](docs/validation/BSPLINE.md)。可选浏览器验收：`python3 tests/browser/bspline.py`，需要 Python Playwright、`/usr/bin/chromium` 和本机 socket 权限；结果写入 `work/12-bspline/`。生产页面不增加新依赖。普通构建不更新发布 ZIP。
