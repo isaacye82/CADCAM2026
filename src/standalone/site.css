@@ -1,0 +1,16 @@
+/* Shared site shell; original teaching controls and Canvas algorithms remain local. */
+:root{--bg:#0c111b;--panel:#131d2b;--line:#26354a;--txt:#e6edf6;--muted:#92a6bf;--cyan:#57dfcf}
+body{background:var(--bg);font-family:Inter,'Segoe UI','Microsoft YaHei',sans-serif}
+body>header{background:var(--bg);max-width:1380px;margin:auto;padding:26px 24px 18px;border-bottom:0;display:block}
+body>header h1{font-size:clamp(24px,3vw,38px);letter-spacing:-.6px}body>header p{line-height:1.8}
+main,main.layout{max-width:1380px;gap:18px;padding:12px 24px 24px}
+.sitecourse-header,.sitecourse-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:20px 24px;margin:auto;font-size:13px}
+.sitecourse-header{border-bottom:1px solid var(--line)}
+.sitecourse-header a,.sitecourse-footer a{color:var(--txt);text-decoration:none;line-height:1.7}
+.sitecourse-header a:hover,.sitecourse-footer a:hover{color:var(--cyan)}
+.sitecourse-header .sitecourse-brand{font-size:17px;letter-spacing:1px;color:var(--cyan);font-weight:700}.sitecourse-brand span{color:var(--muted)}
+.sitecourse-label{color:var(--cyan);font-size:12px;letter-spacing:1px;margin-bottom:12px}
+.sitecourse-footer{max-width:1380px;border-top:1px solid var(--line);margin-top:22px;margin-bottom:20px}
+body>.bottom,body>.guide{max-width:1380px;padding-left:24px;padding-right:24px}
+button,input[type=checkbox],input[type=range]{accent-color:var(--cyan)}
+@media(max-width:740px){main,main.layout{padding:8px 12px 18px}body>header{padding:20px 12px 12px}.sitecourse-header,.sitecourse-footer{padding:14px 12px}select,input[type=number]{max-width:100%}body>header>.tag{display:inline-block;margin-top:10px}}

@@ -6,7 +6,7 @@ import path from 'node:path';
 import {validateSite,siteRoot} from '../scripts/validate-site.mjs';
 
 test('发布目录全部页面、导航锚点及静态资源完整',async()=>{
-  assert.equal((await validateSite()).length,14);
+  assert.equal((await validateSite()).length,17);
 });
 test('发布验证拒绝过期页面和失效资源引用',async()=>{
   const temporary=await mkdtemp(path.join(tmpdir(),'cadcam-publish-'));
