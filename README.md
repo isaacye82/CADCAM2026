@@ -1,6 +1,6 @@
 # CAD/CAM 课程交互实验室
 
-12 个课程作业、14 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
+13 个课程作业、15 个交互演示页面。开发源码位于 `src/`，唯一静态网站目录为 `CADCAM2026_Show/`。
 
 ```text
 src/ + scripts/build.mjs
@@ -52,7 +52,7 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 - `src/math.js`、`src/modules/`：数学算法与交互。
 - `src/prompts.json`：提示词源码档案，不发布。
 - `scripts/build.mjs`：唯一网页生成入口。
-- `scripts/validate-site.mjs`：15 个发布文件、链接、锚点与资源引用校验。
+- `scripts/validate-site.mjs`：18 个发布文件、链接、锚点与资源引用校验。
 - `scripts/package.mjs`：ZIP 打包与解压校验，由 build 自动调用。
 - `tests/`：数学、交付结构和发布校验测试。
 
@@ -106,3 +106,14 @@ Netlify 手动部署：解压 ZIP，将 **`CADCAM2026_Show` 文件夹**拖入手
 首页按作业 10 → 11A → 11B → 11C → 作业 12 排列。原 `courses/11.bezier-surface.html` 为实验 A；新增实验 B 为 `courses/11.bezier-interpolation.html`（均匀/弦长参数插值），实验 C 为 `courses/11.bezier-tensor-product_surface.html`（双三次张量积动画与双视图）。页面保留中文教学内容，文件名使用英文。首页作业11的三个入口集中成组，搜索和分类包含全部14个实验。
 
 上传页面源码位于 `src/standalone/`，`scripts/standalone.mjs` 在构建中添加网站外壳、实验标识及相邻导航。两个页面使用原有内联 Canvas 算法，无外部依赖；实验 C 的光照为逐三角形、顶点颜色插值、逐像素法线光照。构建会重新生成全部发布文件，不应直接编辑发布目录。其余三维课程使用 Three.js/WebGL2。
+
+
+## 作业 13 NURBS 曲线与曲面
+
+入口 `courses/13.nurbs.html`，页面由 `src/nurbs/` 和 `scripts/nurbs.mjs` 生成并完全内联。首页新增作业 13；单个 HTML 可脱离课程目录使用，返回目录链接需要保留原目录结构。
+
+三个展示包括一般曲线与曲面编辑、四类精确圆锥曲线及误差、机身/机翼/短舱教学曲面。支持正权重、节点插入、局部编辑、撤销重做、JSON 导入导出、PNG 导出和手机非模态底部参数面板。统一使用次数；改变次数会重建默认示例。
+
+数学计算独立于 Three.js。误差区分无量纲隐式残差、圆的径向误差和有限解析曲线段的数值最近点距离。机翼拟合 NACA 0012，并报告拟合误差。机身具有退化端点，机翼根梢开放，短舱为开放薄壳；模型不包含工程性能验证。
+
+新增测试 `tests/nurbs.test.mjs`；浏览器验收 `python tests/browser/nurbs.py` 需要预览服务器运行于 4173 端口。详细使用与验证见 `docs/validation/NURBS.md`。

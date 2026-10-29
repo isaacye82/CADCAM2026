@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as M from '../src/nurbs/math.js';
+import {verify} from '../src/nurbs/verify.js';
+import {conic,conicDefaults,conicErrors,generalCurve,generalSurface,aircraft,aeroDefaults,clone,maxDeviation} from '../src/nurbs/models.js';
+test('NURBS 教学内置验证全部通过',()=>{for(let r of verify())assert.ok(r.pass,`${r.name}: ${r.value}`);});
+test('de Boor 与独立有理基求和一致，包含非夹持端点与非单位参数域',()=>{
+ for(let p=1;p<=4;p++)for(let nonclamped of [false,true]){let c=generalCurve(p);c.U=nonclamped?Array.from({length:c.P.length+p+1},(_,i)=>i*.7-3):c.U.map(x=>x*3+2);let[a,b]=M.domain(c);for(let j=0;j<=80;j++){let u=a+(b-a)*j/80,R=M.rationalBasis(c,u),sum=c.P.reduce((s,P,i)=>M.add(s,M.mul(P,R[i])),[0,0,0]);assert.ok(M.norm(M.sub(sum,M.evaluate(c,u)))<1e-11);assert.ok(Math.abs(R.reduce((a,b)=>a+b,0)-1)<1e-12);}}
+});
+test('解析端点导数符合有理 Bézier 公式',()=>{let c=conic({...conicDefaults,sweep:90}),a=M.mul(M.sub(c.P[1],c.P[0]),2*c.W[1]/c.W[0]),b=M.mul(M.sub(c.P[2],c.P[1]),2*c.W[1]/c.W[2]);assert.ok(M.norm(M.sub(M.derivative(c,0),a))<1e-12);assert.ok(M.norm(M.sub(M.derivative(c,1),b))<1e-12);});
+test('旋转平移及左右分支的圆锥曲线保持解析恒等式',()=>{for(let type of ['circle','ellipse','parabola','hyperbola'])for(let branch of [-1,1]){let cfg={...conicDefaults,type,branch,cx:2.8,cy:-1.7,rotation:73,start:-55,sweep:235,T:1.8};assert.ok(Math.max(...conicErrors(conic(cfg),cfg).map(r=>r[1]))<5e-12);}});
+test('扰动权重后相对目标圆的残差及最近点距离显著增大',()=>{let cfg={...conicDefaults,sweep:90},c=conic(cfg);c.W[1]*=1.25;assert.ok(Math.max(...conicErrors(c,cfg).map(r=>r[1]))>.01);assert.ok(Math.max(...conicErrors(c,cfg,'distance',21).map(r=>r[1]))>.01);});
+test('曲面解析切向符合独立中心差分',()=>{let s=generalSurface(),u=.31,v=.64,h=1e-6,f=M.surface(s,u,v,true),du=M.mul(M.sub(M.surface(s,u+h,v),M.surface(s,u-h,v)),1/(2*h)),dv=M.mul(M.sub(M.surface(s,u,v+h),M.surface(s,u,v-h)),1/(2*h));assert.ok(M.norm(M.sub(f.du,du))<1e-7);assert.ok(M.norm(M.sub(f.dv,dv))<1e-7);assert.ok(Math.abs(M.norm(f.normal)-1)<1e-12);});
+test('曲面控制点局部支撑与双方向重复插入保形',()=>{let s=generalSurface(2,2),d=clone(s);d.P[1][1][2]+=2;for(let u of [.85,.95,1])for(let v of [.8,.9,1])assert.ok(M.norm(M.sub(M.surface(s,u,v),M.surface(d,u,v)))<1e-12);d=M.insertSurface(M.insertSurface(s,.4,'u'),.6,'v');assert.ok(maxDeviation(s,d,true)<1e-11);});
+test('三个航空模型都是合法 NURBS，周向接缝及翼型连接正确',()=>{for(let model of ['fuselage','nacelle','wing']){let a=aircraft({...aeroDefaults,model});a.patches.forEach(M.validateSurface);if(model!=='wing'){let s=a.patches[0];for(let u of [0,.2,.5,.9,1])assert.ok(M.norm(M.sub(M.surface(s,u,0),M.surface(s,u,1)))<1e-10);}else{for(let u of [0,.3,.7,1])for(let v of [0,1])assert.ok(M.norm(M.sub(M.surface(a.patches[0],u,v),M.surface(a.patches[1],u,v)))<1e-10);assert.ok(a.fit.max<1e-3);}}});
+test('无效节点、次数、坐标、权重与曲面网格被拒绝',()=>{for(let change of [c=>c.U.reverse(),c=>c.U.pop(),c=>c.W[0]=0,c=>c.W[0]=-1,c=>c.P[0][0]=NaN,c=>c.p=12]){let c=generalCurve();change(c);assert.throws(()=>M.validateCurve(c));}let s=generalSurface();s.P[0].pop();assert.throws(()=>M.validateSurface(s));assert.throws(()=>M.insertKnot(generalCurve(),0));});
+test('内部 p+1 重节点在采样边界区分左右值，不跨断点连线',()=>{const c={p:2,U:[0,0,0,.5,.5,.5,1,1,1],P:[[0,0,0],[1,0,0],[2,0,0],[5,0,0],[6,0,0],[7,0,0]],W:[1,1,1,1,1,1]};M.validateCurve(c);assert.deepEqual(M.evaluate(c,.5,true),[2,0,0]);assert.deepEqual(M.evaluate(c,.5),[5,0,0]);const s={p:2,q:1,U:c.U,V:[0,0,1,1],P:c.P.map(p=>[p,[p[0],1,0]]),W:c.W.map(()=>[1,1])};assert.deepEqual(M.surface(s,.5,.3,false,true),[2,.3,0]);assert.deepEqual(M.surface(s,.5,.3),[5,.3,0]);});

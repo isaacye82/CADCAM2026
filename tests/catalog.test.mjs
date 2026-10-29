@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {lessons,pages,experimentLabel} from '../src/catalog.js';
-test('12 个作业具有14个唯一入口，作业11按A/B/C连接10与12',()=>{
-  assert.equal(lessons.length,12);assert.equal(new Set(pages.map(p=>p.slug)).size,14);
+test('13 个作业具有15个唯一入口，作业11按A/B/C连接10与12',()=>{
+  assert.equal(lessons.length,13);assert.equal(new Set(pages.map(p=>p.slug)).size,15);
   const start=pages.findIndex(p=>p.id===10);
   assert.deepEqual(pages.slice(start,start+5).map(p=>p.slug),['10.bezier','11.bezier-surface','11.bezier-interpolation','11.bezier-tensor-product_surface','12.bspline']);
   assert.deepEqual(pages.filter(p=>p.id===11).map(experimentLabel),['作业 11 · 实验 A','作业 11 · 实验 B','作业 11 · 实验 C']);

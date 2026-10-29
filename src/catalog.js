@@ -10,7 +10,8 @@ export const lessons=[
 {id:9,slug:'9.surface-moving-frame',title:'曲面局部活动坐标系',group:'曲线与曲面',desc:'沿等参数线探索切平面、法向与曲面的主曲率。',tags:['等参数线','切平面','主曲率']},
 {id:10,slug:'10.bezier',title:'Bezier 曲线综合实验',group:'曲线与曲面',desc:'自由组合曲线构造、递推、切矢与活动标架，探索曲率和挠率。',tags:['de Casteljau','活动标架','曲率与挠率']},
 {id:11,slug:'11.bezier-surface',title:'Bézier 曲面与张量积构造',group:'曲线与曲面',desc:'编辑二维控制网格，对照三种光照，观察一条 Bézier 曲线如何扫掠成面。',tags:['Bernstein 基','张量积','线动成面']},
-{id:12,slug:'12.bspline',title:'B 样条曲线与 de Boor 构造',group:'曲线与曲面',desc:'从独立分段走向统一参数域，编辑节点，探索基函数、心形造型与递推构造。',tags:['局部支撑','节点与连续性','de Boor']}
+{id:12,slug:'12.bspline',title:'B 样条曲线与 de Boor 构造',group:'曲线与曲面',desc:'从独立分段走向统一参数域，编辑节点，探索基函数、心形造型与递推构造。',tags:['局部支撑','节点与连续性','de Boor']},
+{id:13,slug:'13.nurbs',artwork:9,title:'NURBS 曲线与曲面',group:'曲线与曲面',desc:'调整权重与控制网格，探索精确圆锥曲线和航空航天曲面。',tags:['有理基函数','圆锥曲线','航空航天曲面']}
 ];
 const surface=lessons.find(lesson=>lesson.id===11);
 export const pages=lessons.flatMap(lesson=>lesson.id!==11?[lesson]:[
