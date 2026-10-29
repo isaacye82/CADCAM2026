@@ -39,11 +39,11 @@ with sync_playwright() as p:
  tab('conic')
  for kind in ['circle','ellipse','parabola','hyperbola']:
   control('圆锥曲线类型').select_option(kind)
-  ok(kind+' exact residual',float(page.locator('#chart-summary').inner_text().split('最大值 ')[1].split(' ·')[0])<1e-11)
-  control('误差类型').select_option('distance');ok(kind+' nearest point metric','最近点' in page.locator('#chart-summary').inner_text())
+  ok(kind+' exact residual',float(page.locator('#error-summary').inner_text().split('最大值 ')[1].split(' ·')[0])<1e-11)
+  control('误差类型').select_option('distance');ok(kind+' nearest point metric','最近点' in page.locator('#error-summary').inner_text())
   control('误差类型').select_option('residual')
  control('圆锥曲线类型').select_option('circle');control('选中控制点').select_option('1,0');page.get_by_role('button',name='扰动所选权重 × 1.25',exact=True).click()
- ok('perturbed conic error increases',float(page.locator('#chart-summary').inner_text().split('最大值 ')[1].split(' ·')[0])>.001)
+ ok('perturbed conic error increases',float(page.locator('#error-summary').inner_text().split('最大值 ')[1].split(' ·')[0])>.001)
  page.get_by_role('button',name='恢复精确构造',exact=True).click()
  slide('半径 R',3.2);num('控制点权重 wᵢ',1.8);ok('local edit after global rebuild',state()['conic']['curve']['W'][0]==1.8)
  control('圆锥曲线类型').select_option('unified');page.get_by_role('button',name='设为 w = 1',exact=True).click();ok('unified conic weight',state()['conic']['curve']['W']==[1,1,1])
@@ -62,7 +62,7 @@ with sync_playwright() as p:
  ok('3D X handle drag and selection priority',abs(before3d[0]-after3d[0])>.01 and before3d[1:]==after3d[1:] and state()['selection']==[3,2])
  page.get_by_role('button',name='↶ 撤销',exact=True).click()
  for model in ['fuselage','nacelle','wing']:
-  control('航空航天外形').select_option(model);ok(model+' real NURBS patches',len(state()['aero']['patches'])==(2 if model=='wing' else 1))
+  control('外形构造').select_option(model);ok(model+' real NURBS patches',len(state()['aero']['patches'])==(2 if model=='wing' else 1))
   page.screenshot(path=str(out/(model+'.png')),full_page=True)
  num('Z',.35);ok('aero local edit state',state()['aero']['dirty'] and '编辑前' in page.locator('#readout').inner_text())
  control('当前编辑曲面片').select_option('1');num('控制点权重 wᵢ',1.2);ok('wing lower patch editing',state()['aero']['patches'][1]['W'][0][0]==1.2)
